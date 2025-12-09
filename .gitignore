@@ -4,3 +4,9 @@ node_modules/
 dist/
 .DS_Store
 *.pyc
+backend/uploads/
+backend/outputs/
+backend/server.log
+frontend/frontend.log
+*.pdf
+*.png
