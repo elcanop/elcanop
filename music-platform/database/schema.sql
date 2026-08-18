@@ -110,8 +110,27 @@ CREATE INDEX idx_delivery_assets_order ON delivery_assets(order_id);
 CREATE INDEX idx_download_grants_order ON download_grants(order_id);
 CREATE INDEX idx_audit_order_created ON audit_log(order_id, created_at DESC);
 
+CREATE TABLE pricing_tiers (
+  tier_id VARCHAR(50) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  current_price NUMERIC(12,2) NOT NULL CHECK (current_price >= 0),
+  regular_price NUMERIC(12,2) NOT NULL CHECK (regular_price >= 0),
+  discount_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  discount_badge VARCHAR(50),
+  delivery_hours INTEGER,
+  format_description VARCHAR(150),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO pricing_tiers (tier_id, name, current_price, regular_price, discount_enabled, discount_badge, delivery_hours, format_description)
+VALUES
+  ('EXPRESS', 'Express', 120000, 160000, true, '25% OFF', 48, 'MP3 320kbps'),
+  ('SEMI_PRO', 'Semi-Pro', 280000, 350000, true, '20% OFF', 72, 'MP3 + WAV Studio (24-bit) + PDF'),
+  ('STEMS_ADDON', 'Stems Multipista (ZIP)', 50000, 70000, true, 'Ahorra $20.000 COP', NULL, 'Pistas separadas en ZIP')
+ON CONFLICT (tier_id) DO NOTHING;
+
 -- RLS debe habilitarse en producción cuando Supabase sea la capa de acceso.
 -- El backend privilegiado es el único componente autorizado para generar
 -- grants de descarga y modificar estados operativos.
 -- La ventana comercial de descarga es de 7 días desde DELIVERED.
--- ST​EMS se entrega como un único asset de tipo STEMS_ZIP.
+-- STEMS se entrega como un único asset de tipo STEMS_ZIP.
