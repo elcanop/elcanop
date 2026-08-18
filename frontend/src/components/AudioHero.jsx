@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Square, Sparkles, Disc, CheckCircle2, ArrowRight, Music2, Radio, Heart, Award } from 'lucide-react';
+import { Play, Square, Sparkles, Disc, CheckCircle2, ArrowRight, Music2, Radio, Heart, Award, HelpCircle } from 'lucide-react';
 import { synth } from '../utils/audioSynth';
 
-export default function AudioHero({ onStartCreating, onExploreGenres }) {
+export default function AudioHero({ onStartCreating, onHowItWorks }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedGenre, setSelectedGenre] = useState('balada');
   const [activeStep, setActiveStep] = useState(0);
@@ -13,6 +13,7 @@ export default function AudioHero({ onStartCreating, onExploreGenres }) {
     { id: 'pop', name: 'Pop Latino', mood: 'Alegre y Brillante', tempo: '115 BPM' },
     { id: 'vallenato', name: 'Vallenato Romántico', mood: 'Sentido y Tradicional', tempo: '90 BPM' },
     { id: 'rock', name: 'Rock Acústico', mood: 'Orgánico y Potente', tempo: '120 BPM' },
+    { id: 'bolero', name: 'Bolero / Bachata', mood: 'Íntimo y Clásico', tempo: '82 BPM' },
   ];
 
   const handlePlayToggle = (genreId = selectedGenre) => {
@@ -49,20 +50,20 @@ export default function AudioHero({ onStartCreating, onExploreGenres }) {
             {/* Tag / Badge */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold tracking-wide">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Producción de Canciones Personalizadas en Colombia</span>
+              <span>Melofilia · Plataforma de Canciones Personalizadas</span>
             </div>
 
-            {/* Main Headline */}
+            {/* Main Headline strictly from spec */}
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold tracking-tight text-white leading-[1.12]">
-              Tu historia, tus momentos, <br />
+              Tu historia puede convertirse <br />
               <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-200 bg-clip-text text-transparent">
-                hechos canción original.
+                en una canción.
               </span>
             </h1>
 
             {/* Subtitle */}
             <p className="text-lg sm:text-xl text-slate-300 font-normal leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              Transformamos anécdotas, aniversarios, declaraciones o recuerdos familiares en una obra musical grabada con calidad de estudio. Tú nos cuentas la historia; nosotros componemos la melodía.
+              Convertimos personas, recuerdos, aniversarios, sentimientos y celebraciones en canciones memorables con producción musical de estudio. Grabaciones opcionales, 1 corrección incluida y entrega en 48–72h.
             </p>
 
             {/* Highlights List */}
@@ -73,7 +74,7 @@ export default function AudioHero({ onStartCreating, onExploreGenres }) {
               </div>
               <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[#12141e]/90 border border-[#262a40]">
                 <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                <span className="text-xs font-semibold text-slate-200">Entrega en 48 a 72h</span>
+                <span className="text-xs font-semibold text-slate-200">Grabación 100% opcional</span>
               </div>
               <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[#12141e]/90 border border-[#262a40]">
                 <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
@@ -81,31 +82,22 @@ export default function AudioHero({ onStartCreating, onExploreGenres }) {
               </div>
             </div>
 
-            {/* CTAs */}
+            {/* CTAs strictly named as in spec: CREAR MI CANCIÓN and CÓMO FUNCIONA */}
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
               <button
                 onClick={onStartCreating}
                 className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-base shadow-xl shadow-amber-500/25 active:scale-95 transition-all"
               >
-                <span>Crear Mi Canción Ahora</span>
+                <span>CREAR MI CANCIÓN</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
 
               <button
-                onClick={() => handlePlayToggle(selectedGenre)}
+                onClick={onHowItWorks}
                 className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl bg-[#181b2a] hover:bg-[#202438] text-slate-200 border border-[#262a40] font-semibold text-sm transition-all"
               >
-                {isPlaying ? (
-                  <>
-                    <Square className="w-4 h-4 text-amber-400 fill-amber-400" />
-                    <span>Detener Muestra</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 text-amber-400 fill-amber-400" />
-                    <span>Escuchar Demo en Vivo</span>
-                  </>
-                )}
+                <HelpCircle className="w-4 h-4 text-amber-400" />
+                <span>CÓMO FUNCIONA</span>
               </button>
             </div>
 
@@ -131,7 +123,7 @@ export default function AudioHero({ onStartCreating, onExploreGenres }) {
                         </span>
                       )}
                     </h3>
-                    <p className="text-xs text-slate-400">Previsualizador en tiempo real</p>
+                    <p className="text-xs text-slate-400">Selector musical interactivo</p>
                   </div>
                 </div>
 
@@ -143,7 +135,7 @@ export default function AudioHero({ onStartCreating, onExploreGenres }) {
               {/* Genre Selector Pills */}
               <div className="py-6 space-y-3">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
-                  Selecciona un estilo para probar:
+                  Explora estilos musicales:
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {genres.map((g) => {
@@ -213,7 +205,7 @@ export default function AudioHero({ onStartCreating, onExploreGenres }) {
                     {isPlaying ? <Square className="w-3.5 h-3.5 fill-black" /> : <Play className="w-3.5 h-3.5 fill-black" />}
                     <span>{isPlaying ? 'Pausar' : 'Reproducir'}</span>
                   </button>
-                  <span className="text-xs text-slate-400">Audio sintetizado vía Web Audio API</span>
+                  <span className="text-xs text-slate-400">Sintetizador Web Audio API</span>
                 </div>
               </div>
 

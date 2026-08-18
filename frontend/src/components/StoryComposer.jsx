@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Heart, Sparkles, Music, Mic, Upload, ArrowRight, ArrowLeft, 
-  Check, CreditCard, ShieldCheck, Plus, X, AlertCircle, Loader2, Tag 
+  Check, CreditCard, ShieldCheck, Plus, X, AlertCircle, Loader2, Tag, 
+  Volume2, FastForward, Play, Square, FileText, CheckCircle2 
 } from 'lucide-react';
 import { createOrder } from '../utils/api';
 import confetti from 'canvas-confetti';
@@ -10,28 +11,50 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [lastSaved, setLastSaved] = useState('Guardado en borrador');
 
   const expressConfig = pricing?.express || { regular_price: 160000, current_price: 120000, discount_enabled: true, discount_badge: '25% OFF' };
   const semiProConfig = pricing?.semi_pro || { regular_price: 350000, current_price: 280000, discount_enabled: true, discount_badge: '20% OFF' };
   const stemsConfig = pricing?.stems_addon || { regular_price: 70000, current_price: 50000, discount_enabled: true, discount_badge: 'Ahorra $20.000' };
 
-  // Form State
-  const [formData, setFormData] = useState({
-    customer_name: '',
-    customer_email: '',
-    customer_phone: '',
-    recipient_name: '',
-    occasion: 'Aniversario',
-    key_memories: '',
-    key_phrases: ['Nuestra historia recién comienza', 'Juntos en cada paso'],
-    newPhrase: '',
-    genre: 'Balada Pop Acústica',
-    mood: 'Emotiva y Romántica',
-    voice_preference: 'Voz Femenina',
-    client_audio_notes: '',
-    product_tier: initialTier,
-    has_stems: false
+  // Form State (6 Steps)
+  const [formData, setFormData] = useState(() => {
+    const saved = localStorage.getItem('melofilia_draft_story');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return {
+      customer_name: '',
+      customer_email: '',
+      customer_phone: '',
+      // Paso 1: Ocasión & Destinatario
+      recipient_name: '',
+      occasion: 'Aniversario',
+      // Paso 2: Historia
+      key_memories: '',
+      key_phrases: ['Nuestra historia recién comienza', 'Juntos en cada paso'],
+      newPhrase: '',
+      // Paso 3: Identidad Musical
+      genre: 'Balada Pop Acústica',
+      subgenre: 'Acústico / Íntimo',
+      mood: 'Emotiva y Romántica',
+      intensity: 'Media', // Suave, Media, Enérgica, Épica
+      voice_preference: 'Voz Femenina',
+      // Paso 4: Referencias
+      rhythm_reference_type: 'none', // 'none' | 'recorded' | 'uploaded'
+      vocal_reference_type: 'none',  // 'none' | 'recorded' | 'uploaded'
+      client_audio_notes: '',
+      // Paso 5: Producto
+      product_tier: initialTier,
+      has_stems: false
+    };
   });
+
+  // Autosave Draft
+  useEffect(() => {
+    localStorage.setItem('melofilia_draft_story', JSON.stringify(formData));
+    setLastSaved(`Guardado automáticamente a las ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`);
+  }, [formData]);
 
   // Dynamic Price Calculation
   const basePrice = formData.product_tier === 'EXPRESS' 
@@ -72,12 +95,14 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
         return;
       }
     }
-    setStep(prev => Math.min(5, prev + 1));
+    setStep(prev => Math.min(6, prev + 1));
+    window.scrollTo({ top: 120, behavior: 'smooth' });
   };
 
   const handlePrev = () => {
     setError(null);
     setStep(prev => Math.max(1, prev - 1));
+    window.scrollTo({ top: 120, behavior: 'smooth' });
   };
 
   // Submit Order & Trigger Mercado Pago
@@ -98,13 +123,15 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
         customer_email: formData.customer_email,
         customer_phone: formData.customer_phone,
         product_tier: formData.product_tier,
-        genre: formData.genre,
-        mood: formData.mood,
+        genre: `${formData.genre} (${formData.subgenre})`,
+        mood: `${formData.mood} · Intensidad: ${formData.intensity}`,
         occasion: formData.occasion,
         story_details: {
           recipient_name: formData.recipient_name,
           key_memories: formData.key_memories,
-          voice_preference: formData.voice_preference
+          voice_preference: formData.voice_preference,
+          intensity: formData.intensity,
+          subgenre: formData.subgenre
         },
         key_phrases: formData.key_phrases,
         has_stems: formData.has_stems,
@@ -119,6 +146,8 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
         origin: { y: 0.6 }
       });
 
+      localStorage.removeItem('melofilia_draft_story');
+
       if (response.checkoutUrl) {
         onOrderCreated(response.order.order_number, response.checkoutUrl);
       } else {
@@ -131,31 +160,38 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
     }
   };
 
+  const stepTitles = [
+    'PASO 1 — OCASIÓN',
+    'PASO 2 — HISTORIA',
+    'PASO 3 — IDENTIDAD MUSICAL',
+    'PASO 4 — REFERENCIAS (OPCIONAL)',
+    'PASO 5 — PRODUCTO',
+    'PASO 6 — RESUMEN & PAGO'
+  ];
+
   return (
     <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
       
       {/* Step Indicator Header */}
-      <div className="mb-10 text-center space-y-4">
+      <div className="mb-10 text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Constructor de Canción Personalizada</span>
+          <span>Constructor Guiado Melofilia</span>
         </div>
-        <h2 className="text-3xl font-display font-extrabold text-white tracking-tight">
-          Paso {step} de 5: {
-            step === 1 ? 'Destinatario y Ocasión' :
-            step === 2 ? 'Tu Historia y Frases Clave' :
-            step === 3 ? 'Estilo Musical y Emoción' :
-            step === 4 ? 'Nivel de Producción y Complementos' :
-            'Tus Datos y Pago Seguro'
-          }
+        <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-white tracking-tight">
+          {stepTitles[step - 1]}
         </h2>
 
         {/* Progress Bar */}
         <div className="w-full bg-[#181b2a] h-2 rounded-full overflow-hidden max-w-md mx-auto border border-[#262a40]">
           <div 
             className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300 rounded-full"
-            style={{ width: `${(step / 5) * 100}%` }}
+            style={{ width: `${(step / 6) * 100}%` }}
           ></div>
+        </div>
+        
+        <div className="text-[11px] text-slate-500 font-medium">
+          {lastSaved}
         </div>
       </div>
 
@@ -169,7 +205,7 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
           </div>
         )}
 
-        {/* STEP 1: Destinatario y Ocasión */}
+        {/* PASO 1 — OCASIÓN */}
         {step === 1 && (
           <div className="space-y-6">
             <div>
@@ -181,24 +217,24 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                 value={formData.recipient_name}
                 onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
                 placeholder="Ej: A mi esposa Mariana, a mi mamá Luz, o a mi mejor amigo Carlos"
-                className="w-full px-4 py-3.5 rounded-xl bg-[#090a0f] border border-[#262a40] text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors"
+                className="w-full px-4 py-3.5 rounded-xl bg-[#090a0f] border border-[#262a40] text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors text-sm"
               />
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-slate-200 mb-2">
-                ¿Cuál es la ocasión especial?
+                Selecciona la ocasión:
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {[
-                  'Aniversario', 'Cumpleaños', 'Boda / Matrimonio', 'Declaración de Amor',
-                  'Día de la Madre/Padre', 'Agradecimiento', 'Homenaje / Recuerdo', 'Motivación'
+                  'Cumpleaños', 'Aniversario', 'Amor', 'Homenaje',
+                  'Amistad', 'Propuesta', 'Recuerdo', 'Celebración', 'Otra'
                 ].map((occ) => (
                   <button
                     key={occ}
                     type="button"
                     onClick={() => setFormData({ ...formData, occasion: occ })}
-                    className={`p-3 rounded-xl border text-xs font-semibold text-center transition-all ${
+                    className={`p-3.5 rounded-xl border text-xs font-semibold text-center transition-all ${
                       formData.occasion === occ
                         ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm'
                         : 'bg-[#181b2a] border-[#262a40] text-slate-300 hover:border-slate-600'
@@ -212,28 +248,38 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
           </div>
         )}
 
-        {/* STEP 2: Historia y Frases Clave */}
+        {/* PASO 2 — HISTORIA */}
         {step === 2 && (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-semibold text-slate-200 mb-2">
-                Cuéntanos la historia, anécdotas y detalles que quieres plasmar <span className="text-amber-400">*</span>
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-sm font-semibold text-slate-200">
+                  Escribe tu historia, recuerdos y anécdotas <span className="text-amber-400">*</span>
+                </label>
+                <span className="text-xs font-mono text-slate-400">
+                  {formData.key_memories.length} caracteres
+                </span>
+              </div>
               <textarea
-                rows={5}
+                rows={6}
                 value={formData.key_memories}
                 onChange={(e) => setFormData({ ...formData, key_memories: e.target.value })}
-                placeholder="Ej: Nos conocimos hace 5 años en un café en Bogotá. Ella siempre pide capuchino sin azúcar. El viaje a Cartagena donde le pedí matrimonio..."
-                className="w-full px-4 py-3.5 rounded-xl bg-[#090a0f] border border-[#262a40] text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors text-sm"
+                placeholder="Ej: Nos conocimos en una cafetería en Medellín un día lluvioso. Ella siempre pide capuchino sin azúcar. El viaje a Santa Marta donde nos comprometimos frente al mar..."
+                className="w-full px-4 py-3.5 rounded-xl bg-[#090a0f] border border-[#262a40] text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors text-sm leading-relaxed"
               />
-              <p className="text-xs text-slate-400 mt-1.5">
-                Entre más detalles nos des, más única y emocionante será la letra.
-              </p>
+              
+              {/* Contextual Prompts */}
+              <div className="p-3.5 rounded-2xl bg-[#090a0f] border border-[#262a40] mt-3 space-y-1 text-xs text-slate-400">
+                <span className="font-bold text-amber-400">💡 Sugerencias contextuales:</span>
+                <p>• Menciona lugares especiales (ciudades, cafeterías, viajes).</p>
+                <p>• Describe apodos cariñosos o frases divertidas que solo ustedes entiendan.</p>
+                <p>• Explica la emoción central: ¿quieres que sea nostálgica, romántica o para celebrar?</p>
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-slate-200 mb-2">
-                Nombres, frases o palabras obligatorias en la canción
+                Frases o nombres obligatorios que deben rimar en la letra:
               </label>
               <div className="flex gap-2 mb-3">
                 <input
@@ -241,7 +287,7 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                   value={formData.newPhrase}
                   onChange={(e) => setFormData({ ...formData, newPhrase: e.target.value })}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddPhrase())}
-                  placeholder="Ej: 'Mi negrita linda', 'El viaje a Guatapé', 'Siempre juntos'"
+                  placeholder="Ej: 'Mi negrita linda', 'Siempre juntos'"
                   className="flex-1 px-4 py-2.5 rounded-xl bg-[#090a0f] border border-[#262a40] text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm"
                 />
                 <button
@@ -275,24 +321,23 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
           </div>
         )}
 
-        {/* STEP 3: Estilo Musical & Emoción */}
+        {/* PASO 3 — IDENTIDAD MUSICAL */}
         {step === 3 && (
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-semibold text-slate-200 mb-2">
-                Género Musical Principal
+                Género Principal:
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {[
-                  'Balada Pop Acústica', 'Urbano / Reggaetón Suave', 'Pop Latino Moderno',
-                  'Vallenato Romántico', 'Rock Acústico', 'Bolero Tradicional',
-                  'Salsa Romántica', 'Folk / Indie', 'Ranchera / Popular'
+                  'Pop', 'Reggaetón', 'Salsa', 'Vallenato',
+                  'Bachata', 'Balada', 'Urbano', 'Rock'
                 ].map((g) => (
                   <button
                     key={g}
                     type="button"
                     onClick={() => setFormData({ ...formData, genre: g })}
-                    className={`p-3 rounded-xl border text-xs font-semibold text-left transition-all ${
+                    className={`p-3 rounded-xl border text-xs font-semibold text-center transition-all ${
                       formData.genre === g
                         ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm'
                         : 'bg-[#181b2a] border-[#262a40] text-slate-300 hover:border-slate-600'
@@ -307,58 +352,184 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-slate-200 mb-2">
-                  Emoción o Vibra de la Canción
+                  Estado Emocional:
                 </label>
                 <select
                   value={formData.mood}
                   onChange={(e) => setFormData({ ...formData, mood: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl bg-[#090a0f] border border-[#262a40] text-white focus:outline-none focus:border-amber-500 text-sm"
                 >
-                  <option value="Emotiva y Romántica">Emotiva y Romántica (Para llorar de felicidad)</option>
+                  <option value="Emotiva y Romántica">Emotiva y Romántica (Para tocar el corazón)</option>
                   <option value="Alegre y Enérgica">Alegre y Enérgica (Para cantar y bailar)</option>
                   <option value="Nostálgica y Profunda">Nostálgica y Profunda (Recuerdos de vida)</option>
                   <option value="Épica y Triunfal">Épica y Triunfal (Homenaje de superación)</option>
-                  <option value="Divertida y Cósmica">Divertida y Humorística</option>
+                  <option value="Divertida y Pícara">Divertida y Alegre</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-slate-200 mb-2">
-                  Preferencia de Voz
+                  Intensidad Musical:
                 </label>
-                <select
-                  value={formData.voice_preference}
-                  onChange={(e) => setFormData({ ...formData, voice_preference: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-[#090a0f] border border-[#262a40] text-white focus:outline-none focus:border-amber-500 text-sm"
-                >
-                  <option value="Voz Femenina">Voz Femenina (Cálida / Suave)</option>
-                  <option value="Voz Masculina">Voz Masculina (Expresiva / Profunda)</option>
-                  <option value="Dúo Armónico">Dúo / Voces Combinadas</option>
-                  <option value="Sin Preferencia">Lo que mejor quede según el productor</option>
-                </select>
+                <div className="grid grid-cols-4 gap-2">
+                  {['Suave', 'Media', 'Enérgica', 'Épica'].map((lvl) => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, intensity: lvl })}
+                      className={`p-2.5 rounded-xl border text-xs font-semibold text-center transition-all ${
+                        formData.intensity === lvl
+                          ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                          : 'bg-[#090a0f] border-[#262a40] text-slate-400'
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-slate-200 mb-2">
-                Notas adicionales para los productores (Opcional)
+                Tipo de Voz / Estilo Vocal:
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {['Voz Femenina', 'Voz Masculina', 'Dúo Armónico', 'Sin Preferencia'].map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, voice_preference: v })}
+                    className={`p-3 rounded-xl border text-xs font-semibold text-center transition-all ${
+                      formData.voice_preference === v
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                        : 'bg-[#181b2a] border-[#262a40] text-slate-300'
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PASO 4 — REFERENCIAS (OPCIONALES) */}
+        {step === 4 && (
+          <div className="space-y-6">
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2.5">
+              <Sparkles className="w-5 h-5 text-amber-400 shrink-0" />
+              <span>
+                <strong>Las grabaciones son completamente opcionales.</strong> Si no tienes referencias de audio, puedes continuar directamente.
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              
+              {/* Referencia Rítmica */}
+              <div className="p-5 rounded-2xl bg-[#090a0f] border border-[#262a40] space-y-3">
+                <div className="flex items-center gap-2 text-white font-bold text-sm">
+                  <Music className="w-4 h-4 text-amber-400" />
+                  <span>Referencia Rítmica (Opcional)</span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Para explicar cadencia, ritmo o una idea musical específica.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, rhythm_reference_type: 'recorded' })}
+                    className={`flex-1 p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                      formData.rhythm_reference_type === 'recorded'
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                        : 'bg-[#181b2a] border-[#262a40] text-slate-300'
+                    }`}
+                  >
+                    <Mic className="w-3.5 h-3.5" /> Grabar Ritmo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, rhythm_reference_type: 'uploaded' })}
+                    className={`flex-1 p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                      formData.rhythm_reference_type === 'uploaded'
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                        : 'bg-[#181b2a] border-[#262a40] text-slate-300'
+                    }`}
+                  >
+                    <Upload className="w-3.5 h-3.5" /> Subir Audio
+                  </button>
+                </div>
+              </div>
+
+              {/* Referencia Vocal */}
+              <div className="p-5 rounded-2xl bg-[#090a0f] border border-[#262a40] space-y-3">
+                <div className="flex items-center gap-2 text-white font-bold text-sm">
+                  <Volume2 className="w-4 h-4 text-amber-400" />
+                  <span>Referencia Vocal (Opcional)</span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Para explicar intención, pronunciación o forma de cantar.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, vocal_reference_type: 'recorded' })}
+                    className={`flex-1 p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                      formData.vocal_reference_type === 'recorded'
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                        : 'bg-[#181b2a] border-[#262a40] text-slate-300'
+                    }`}
+                  >
+                    <Mic className="w-3.5 h-3.5" /> Grabar Voz
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, vocal_reference_type: 'uploaded' })}
+                    className={`flex-1 p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                      formData.vocal_reference_type === 'uploaded'
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                        : 'bg-[#181b2a] border-[#262a40] text-slate-300'
+                    }`}
+                  >
+                    <Upload className="w-3.5 h-3.5" /> Subir Audio
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-200 mb-2">
+                Notas adicionales para el productor (Opcional):
               </label>
               <input
                 type="text"
                 value={formData.client_audio_notes}
                 onChange={(e) => setFormData({ ...formData, client_audio_notes: e.target.value })}
-                placeholder="Ej: 'Me gustaría que tenga un solo de saxo suave al final' o 'estilo Carlos Vives'"
+                placeholder="Ej: 'Inspiración en acústicos de Juanes' o 'Solo de guitarra suave al final'"
                 className="w-full px-4 py-3 rounded-xl bg-[#090a0f] border border-[#262a40] text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm"
               />
+            </div>
+
+            {/* Prominent Button: CONTINUAR SIN GRABACIÓN as per Section 4 */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleNext}
+                className="w-full py-3.5 px-4 rounded-xl bg-[#181b2a] hover:bg-[#202438] text-amber-300 border border-amber-500/40 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
+              >
+                <span>CONTINUAR SIN GRABACIÓN</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         )}
 
-        {/* STEP 4: Selección de Nivel y Complementos */}
-        {step === 4 && (
+        {/* PASO 5 — PRODUCTO */}
+        {step === 5 && (
           <div className="space-y-6">
             <label className="block text-sm font-semibold text-slate-200 mb-1">
-              Selecciona tu formato de entrega:
+              Selecciona tu modalidad de producción:
             </label>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -385,9 +556,11 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                     </span>
                   </div>
                 </div>
-                <p className="text-xs text-slate-400 mb-4">Entrega en {expressConfig.delivery_hours || 48}h en Master MP3 de alta fidelidad.</p>
+                <p className="text-xs text-slate-400 mb-4">Producto de entrada con entrega en 48h.</p>
                 <ul className="text-xs space-y-2 text-slate-300">
-                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> Letra 100% personalizada</li>
+                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> Canción y letra personalizada</li>
+                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> Master final en MP3 (320kbps)</li>
+                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> Letra en PDF lista para imprimir</li>
                   <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> 1 Corrección incluida</li>
                 </ul>
               </div>
@@ -416,10 +589,11 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                     </span>
                   </div>
                 </div>
-                <p className="text-xs text-slate-400 mb-4">Entrega en {semiProConfig.delivery_hours || 72}h con Master MP3 + WAV Studio + PDF Letra.</p>
+                <p className="text-xs text-slate-400 mb-4">Producto de mayor elaboración con entrega en 72h.</p>
                 <ul className="text-xs space-y-2 text-slate-200">
-                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-amber-400" /> Master WAV sin compresión + MP3</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-amber-400" /> PDF de Letras oficial para imprimir</li>
+                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-amber-400" /> Letra con mayor desarrollo y métrica</li>
+                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-amber-400" /> Master en MP3 + WAV Studio (24-bit)</li>
+                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-amber-400" /> Carátula digital personalizada + PDF</li>
                   <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-amber-400" /> 1 Corrección garantizada</li>
                 </ul>
               </div>
@@ -438,10 +612,10 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                 />
                 <label htmlFor="stems_addon" className="cursor-pointer">
                   <div className="text-sm font-bold text-white flex items-center gap-2">
-                    Incluir Stems Multipista en ZIP (+ ${stemsConfig.current_price?.toLocaleString('es-CO')} COP)
+                    Incluir Stems en STEMS.ZIP (+ ${stemsConfig.current_price?.toLocaleString('es-CO')} COP)
                   </div>
                   <div className="text-xs text-slate-400">
-                    Descarga pistas individuales separadas (Voz, Batería, Bajo, Guitarras, Teclados).
+                    Pistas multipista individuales (Voz, Batería, Bajo, Teclados, Guitarras).
                   </div>
                 </label>
               </div>
@@ -467,13 +641,13 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
           </div>
         )}
 
-        {/* STEP 5: Datos de Contacto y Checkout Mercado Pago */}
-        {step === 5 && (
+        {/* PASO 6 — RESUMEN & PAGO */}
+        {step === 6 && (
           <form onSubmit={handleSubmitOrder} className="space-y-6">
             <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2.5">
               <ShieldCheck className="w-5 h-5 text-amber-400 shrink-0" />
               <span>
-                Al confirmar, se generará tu <strong>Número Único de Pedido</strong> y serás redirigido al Checkout Seguro de <strong>Mercado Pago</strong> para procesar el pago en Sandbox.
+                Al confirmar, se generará tu <strong>Número Único de Pedido (MP-2026-XXXXXX)</strong> y serás redirigido al Checkout Seguro de <strong>Mercado Pago</strong>.
               </span>
             </div>
 
@@ -509,7 +683,7 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
 
             <div>
               <label className="block text-sm font-semibold text-slate-200 mb-2">
-                Teléfono / WhatsApp (Para coordinar entrega y corrección)
+                Teléfono / WhatsApp (Para coordinar entrega y revisión)
               </label>
               <input
                 type="tel"
@@ -521,11 +695,12 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
             </div>
 
             {/* Summary Card */}
-            <div className="p-4 rounded-2xl bg-[#090a0f] border border-[#262a40] space-y-2 text-xs text-slate-300">
-              <div className="font-bold text-sm text-white mb-1">Resumen del Pedido:</div>
+            <div className="p-5 rounded-2xl bg-[#090a0f] border border-[#262a40] space-y-2.5 text-xs text-slate-300">
+              <div className="font-bold text-sm text-white mb-1">Ficha Resumen de tu Pedido:</div>
               <div className="flex justify-between"><span>Dedicada a:</span> <strong className="text-slate-100">{formData.recipient_name} ({formData.occasion})</strong></div>
-              <div className="flex justify-between"><span>Género / Vibra:</span> <strong className="text-slate-100">{formData.genre} · {formData.mood}</strong></div>
-              <div className="flex justify-between"><span>Plan de Producción:</span> <strong className="text-slate-100">{formData.product_tier} {formData.has_stems ? '(con Stems ZIP)' : ''}</strong></div>
+              <div className="flex justify-between"><span>Género & Emoción:</span> <strong className="text-slate-100">{formData.genre} · {formData.mood}</strong></div>
+              <div className="flex justify-between"><span>Modalidad:</span> <strong className="text-slate-100">{formData.product_tier} {formData.has_stems ? '(con STEMS.ZIP)' : ''}</strong></div>
+              <div className="flex justify-between"><span>Correcciones incluidas:</span> <strong className="text-emerald-400">1 Ronda Garantizada</strong></div>
               <div className="flex justify-between pt-2 border-t border-[#262a40] text-sm">
                 <span className="font-bold text-white">Total a Pagar:</span>
                 <strong className="text-amber-400 font-extrabold text-base">${totalPrice.toLocaleString('es-CO')} COP</strong>
@@ -540,7 +715,7 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Creando orden y conectando con Mercado Pago...</span>
+                  <span>Creando orden y conectando con pasarela...</span>
                 </>
               ) : (
                 <>
@@ -566,7 +741,7 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
             <div></div>
           )}
 
-          {step < 5 && (
+          {step < 6 && (
             <button
               type="button"
               onClick={handleNext}

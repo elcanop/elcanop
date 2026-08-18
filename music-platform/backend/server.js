@@ -555,8 +555,117 @@ app.post('/api/admin/simulate-payment', (req, res) => {
   });
 });
 
+// Almacén en memoria de Mensajes del Buzón de Contacto (Sección 30-35)
+const contactMessages = [
+  {
+    id: 'msg_001',
+    name: 'Carolina Velásquez',
+    email: 'carolina.v@ejemplo.com',
+    category: 'REVIEW',
+    order_number: 'MP-2026-000184',
+    message: '¡La canción para mi esposo quedó increíble! Lloramos los dos cuando la escuchamos. Muchas gracias a todo el equipo de producción.',
+    status: 'RESOLVED',
+    is_approved_review: true,
+    internal_notes: 'Cliente muy satisfecha. Aprobada para testimonios.',
+    created_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 12 * 3600 * 1000).toISOString()
+  },
+  {
+    id: 'msg_002',
+    name: 'Andrés Felipe Morales',
+    email: 'andres.felipe@ejemplo.com',
+    category: 'COTIZACIÓN',
+    order_number: null,
+    message: 'Hola, me gustaría saber si hacen canciones en género Salsa tradicional con metales y coro para los 50 años de mi padre.',
+    status: 'NEW',
+    is_approved_review: false,
+    internal_notes: null,
+    created_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString()
+  }
+];
+
+/**
+ * Endpoint Público: Enviar mensaje al Buzón de Contacto (Sección 31)
+ */
+app.post('/api/contact', (req, res) => {
+  try {
+    const { name, email, category = 'SERVICIOS', order_number, message, data_consent } = req.body;
+
+    if (!name || !email || !message) {
+      return res.status(400).json({ error: 'Nombre, correo y mensaje son obligatorios.' });
+    }
+
+    const newMessage = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      name: name.trim(),
+      email: email.trim(),
+      category: category.toUpperCase(),
+      order_number: order_number ? order_number.trim().toUpperCase() : null,
+      message: message.trim(),
+      status: 'NEW', // 'NEW' | 'IN_PROGRESS' | 'WAITING_CUSTOMER' | 'RESOLVED' | 'CLOSED'
+      is_approved_review: false,
+      internal_notes: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    contactMessages.unshift(newMessage);
+
+    res.status(201).json({
+      success: true,
+      message: 'Tu mensaje ha sido recibido por el equipo de Melofilia. Te responderemos a la brevedad.',
+      entry: newMessage
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al procesar el mensaje: ' + err.message });
+  }
+});
+
+/**
+ * Endpoints Administrativos: Buzón de Contacto
+ */
+app.get('/api/admin/contact', (req, res) => {
+  res.json({
+    total: contactMessages.length,
+    messages: contactMessages
+  });
+});
+
+app.patch('/api/admin/contact/:id', (req, res) => {
+  const { id } = req.params;
+  const { status, is_approved_review, internal_notes, linked_order_number } = req.body;
+
+  const msg = contactMessages.find(m => m.id === id);
+  if (!msg) {
+    return res.status(404).json({ error: 'Mensaje no encontrado' });
+  }
+
+  if (status) msg.status = status;
+  if (is_approved_review !== undefined) msg.is_approved_review = is_approved_review;
+  if (internal_notes !== undefined) msg.internal_notes = internal_notes;
+  if (linked_order_number !== undefined) msg.order_number = linked_order_number;
+  msg.updated_at = new Date().toISOString();
+
+  res.json({
+    success: true,
+    message: 'Mensaje de contacto actualizado exitosamente',
+    entry: msg
+  });
+});
+
+/**
+ * Reviews públicas aprobadas para la Landing Page
+ */
+app.get('/api/reviews/public', (req, res) => {
+  const approved = contactMessages.filter(m => m.category === 'REVIEW' && m.is_approved_review);
+  res.json(approved);
+});
+
 app.listen(PORT, () => {
   console.log(`🎵 Melofilia API Server escuchando en http://localhost:${PORT}`);
   console.log(`💳 Mercado Pago Sandbox: ACTIVO (Moneda: COP)`);
   console.log(`🏷️ Precios Dinámicos y Descuentos: HABILITADOS`);
+  console.log(`📬 Buzón de Contacto y Reviews: HABILITADOS`);
 });
+

@@ -6,6 +6,7 @@ import HowItWorksAndFaq from './components/HowItWorksAndFaq';
 import StoryComposer from './components/StoryComposer';
 import OrderTracker from './components/OrderTracker';
 import AdminDashboard from './components/AdminDashboard';
+import ContactModal from './components/ContactModal';
 import Footer from './components/Footer';
 import { CreditCard, ExternalLink, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { getPricingConfig } from './utils/api';
@@ -14,6 +15,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('landing');
   const [currentOrderNumber, setCurrentOrderNumber] = useState('MP-2026-000184');
   const [selectedTier, setSelectedTier] = useState('SEMI_PRO');
+  const [isContactOpen, setIsContactOpen] = useState(false);
   
   // Pricing configuration loaded dynamically from backend
   const [pricing, setPricing] = useState({
@@ -97,6 +99,16 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleHowItWorks = () => {
+    setActiveTab('landing');
+    setTimeout(() => {
+      const el = document.getElementById('how-it-works-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
   const handleOrderCreated = (orderNumber, checkoutUrl) => {
     setCurrentOrderNumber(orderNumber);
     if (checkoutUrl) {
@@ -147,6 +159,7 @@ export default function App() {
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         currentOrderNumber={currentOrderNumber} 
+        onOpenContact={() => setIsContactOpen(true)}
       />
 
       {/* Main Content Areas */}
@@ -157,14 +170,17 @@ export default function App() {
           <div>
             <AudioHero 
               onStartCreating={() => handleStartCreating('SEMI_PRO')} 
+              onHowItWorks={handleHowItWorks}
             />
             <ComparisonTable 
               pricing={pricing}
               onSelectTier={(tier) => handleStartCreating(tier)} 
             />
-            <HowItWorksAndFaq 
-              onStartCreating={() => handleStartCreating('SEMI_PRO')} 
-            />
+            <div id="how-it-works-section">
+              <HowItWorksAndFaq 
+                onStartCreating={() => handleStartCreating('SEMI_PRO')} 
+              />
+            </div>
           </div>
         )}
 
@@ -194,6 +210,12 @@ export default function App() {
         )}
 
       </main>
+
+      {/* Contact Inbox Modal (Sections 30-35) */}
+      <ContactModal
+        isOpen={isContactOpen}
+        onClose={() => setIsContactOpen(false)}
+      />
 
       {/* Mercado Pago Checkout Modal */}
       {checkoutModal.isOpen && (
@@ -252,10 +274,13 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <Footer onNavigate={(tab) => {
-        setActiveTab(tab);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }} />
+      <Footer 
+        onOpenContact={() => setIsContactOpen(true)}
+        onNavigate={(tab) => {
+          setActiveTab(tab);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }} 
+      />
 
     </div>
   );

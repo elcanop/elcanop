@@ -91,3 +91,38 @@ export async function simulatePaymentApproval(orderNumber) {
   if (!res.ok) throw new Error('Error al simular pago');
   return res.json();
 }
+
+export async function sendContactMessage(contactData) {
+  const res = await fetch(`${API_BASE}/api/contact`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(contactData)
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Error al enviar mensaje');
+  }
+  return res.json();
+}
+
+export async function getAdminContactMessages() {
+  const res = await fetch(`${API_BASE}/api/admin/contact`);
+  if (!res.ok) throw new Error('Error al consultar buzón de contacto');
+  return res.json();
+}
+
+export async function updateAdminContactMessage(id, updateData) {
+  const res = await fetch(`${API_BASE}/api/admin/contact/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updateData)
+  });
+  if (!res.ok) throw new Error('Error al actualizar mensaje');
+  return res.json();
+}
+
+export async function getPublicReviews() {
+  const res = await fetch(`${API_BASE}/api/reviews/public`);
+  if (!res.ok) return [];
+  return res.json();
+}

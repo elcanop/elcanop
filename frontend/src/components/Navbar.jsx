@@ -1,7 +1,7 @@
 import React from 'react';
-import { Music, Sparkles, Search, PlusCircle, ShieldCheck, Headphones } from 'lucide-react';
+import { Music, Sparkles, Search, PlusCircle, ShieldCheck, MessageSquare, Headphones } from 'lucide-react';
 
-export default function Navbar({ activeTab, setActiveTab, currentOrderNumber }) {
+export default function Navbar({ activeTab, setActiveTab, currentOrderNumber, onOpenContact }) {
   return (
     <nav className="sticky top-0 z-50 backdrop-blur-xl bg-[#090a0f]/80 border-b border-[#262a40] transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -66,6 +66,14 @@ export default function Navbar({ activeTab, setActiveTab, currentOrderNumber }) 
               {currentOrderNumber && (
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
               )}
+            </button>
+
+            <button
+              onClick={onOpenContact}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium text-slate-300 hover:text-amber-300 hover:bg-white/5 transition-all"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+              Buzón
             </button>
           </div>
 
