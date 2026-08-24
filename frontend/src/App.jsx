@@ -14,7 +14,9 @@ import { getPricingConfig, getAdminUser, verifyAdminSession, logoutAdmin } from 
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('landing');
-  const [currentOrderNumber, setCurrentOrderNumber] = useState('MP-2026-000184');
+  const [currentOrderNumber, setCurrentOrderNumber] = useState(() => {
+    return typeof window !== 'undefined' ? (localStorage.getItem('melofilia_last_order') || '') : '';
+  });
   const [selectedTier, setSelectedTier] = useState('SEMI_PRO');
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [adminUser, setAdminUser] = useState(() => getAdminUser());

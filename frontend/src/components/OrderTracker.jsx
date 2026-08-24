@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { getOrder, reviewLyrics, submitCorrection, requestDownloadGrant } from '../utils/api';
 
-export default function OrderTracker({ initialOrderNumber = 'MP-2026-000184' }) {
+export default function OrderTracker({ initialOrderNumber = '' }) {
   const [orderNumber, setOrderNumber] = useState(initialOrderNumber);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -34,7 +34,10 @@ export default function OrderTracker({ initialOrderNumber = 'MP-2026-000184' }) 
   const [authorizingDownload, setAuthorizingDownload] = useState(false);
 
   const fetchOrderDetails = async (numToFetch = orderNumber) => {
-    if (!numToFetch.trim()) return;
+    if (!numToFetch.trim()) {
+      setError('Por favor ingresa un número de pedido (ej: MP-2026-XXXXXX).');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -42,7 +45,7 @@ export default function OrderTracker({ initialOrderNumber = 'MP-2026-000184' }) 
       setOrder(data);
       setDownloads(null);
     } catch (err) {
-      setError(err.message || 'No se encontró ningún pedido con ese número.');
+      setError(err.message || 'No se encontró ningún pedido con ese número. Verifica el código e intenta nuevamente.');
       setOrder(null);
     } finally {
       setLoading(false);
@@ -50,7 +53,8 @@ export default function OrderTracker({ initialOrderNumber = 'MP-2026-000184' }) 
   };
 
   useEffect(() => {
-    if (initialOrderNumber) {
+    if (initialOrderNumber && initialOrderNumber.trim()) {
+      setOrderNumber(initialOrderNumber);
       fetchOrderDetails(initialOrderNumber);
     }
   }, [initialOrderNumber]);
@@ -202,6 +206,20 @@ export default function OrderTracker({ initialOrderNumber = 'MP-2026-000184' }) 
         }`}>
           <CheckCircle2 className="w-5 h-5 shrink-0" />
           <span>{lyricsNotice.message}</span>
+        </div>
+      )}
+
+      {!order && !loading && !error && (
+        <div className="p-8 sm:p-12 rounded-3xl bg-[#12141e] border border-[#262a40] text-center max-w-xl mx-auto space-y-4 shadow-xl animate-fadeIn">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+            <Music className="w-7 h-7" />
+          </div>
+          <h3 className="font-display font-bold text-lg text-white">
+            ¿Ya creaste tu canción?
+          </h3>
+          <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
+            Ingresa arriba tu código de pedido único para entrar a tu sala privada de escucha, revisar y aprobar la letra de tu historia, y descargar tus masters.
+          </p>
         </div>
       )}
 
