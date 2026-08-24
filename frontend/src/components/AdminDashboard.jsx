@@ -418,6 +418,55 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
                   </span>
                 </div>
 
+                {/* Customer Contact & Sales Card */}
+                <div className="p-4 rounded-2xl bg-[#090a0f] border border-[#262a40] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-amber-400" />
+                      Datos del Comprador / Ventas
+                    </span>
+                    <span className="text-[11px] font-mono text-emerald-400 font-bold">
+                      ${(selectedOrder.total_amount || 0).toLocaleString('es-CO')} COP
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Cliente:</span>
+                      <strong className="text-slate-200">{selectedOrder.customer_name}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Ocasión / Dedicatoria:</span>
+                      <strong className="text-slate-200">{selectedOrder.occasion} ({selectedOrder.story_details?.recipient_name || 'N/A'})</strong>
+                    </div>
+                  </div>
+
+                  {/* Direct Contact Actions: WhatsApp & Email */}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {selectedOrder.customer_phone && (
+                      <a
+                        href={`https://wa.me/${selectedOrder.customer_phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`¡Hola ${selectedOrder.customer_name}! Te saludamos de Melofilia (Drop It Co) respecto a tu pedido ${selectedOrder.order_number} para ${selectedOrder.story_details?.recipient_name || 'tu canción'}.`)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-colors"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>WhatsApp: {selectedOrder.customer_phone}</span>
+                      </a>
+                    )}
+
+                    {selectedOrder.customer_email && (
+                      <a
+                        href={`mailto:${selectedOrder.customer_email}?subject=${encodeURIComponent(`Tu Canción Melofilia (${selectedOrder.order_number})`)}`}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#181b2a] hover:bg-[#202438] text-slate-300 border border-[#262a40] text-xs font-medium transition-colors font-mono"
+                      >
+                        <Mail className="w-3.5 h-3.5 text-amber-400" />
+                        <span>{selectedOrder.customer_email}</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+
                 {/* 4 Copy Buttons */}
                 <div className="grid grid-cols-2 gap-2">
                   <button
