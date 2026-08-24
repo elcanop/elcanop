@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Mail, KeyRound, Loader2, AlertCircle, ShieldAlert } from 'lucide-react';
+import { ShieldCheck, Lock, User, KeyRound, Loader2, AlertCircle, ShieldAlert } from 'lucide-react';
 import { loginAdmin } from '../utils/api';
 
 export default function AdminLogin({ onLoginSuccess }) {
-  const [email, setEmail] = useState('');
+  const [usuario, setUsuario] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -14,7 +14,7 @@ export default function AdminLogin({ onLoginSuccess }) {
     setError(null);
 
     try {
-      const data = await loginAdmin(email, password);
+      const data = await loginAdmin(usuario, password);
       onLoginSuccess(data.user);
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión');
@@ -57,18 +57,19 @@ export default function AdminLogin({ onLoginSuccess }) {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Correo Electrónico
+                Usuario
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Mail className="w-4 h-4" />
+                  <User className="w-4 h-4" />
                 </div>
                 <input
-                  type="email"
+                  type="text"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="correo@empresa.com"
+                  value={usuario}
+                  onChange={(e) => setUsuario(e.target.value)}
+                  placeholder="Ingresa tu usuario"
+                  autoComplete="username"
                   className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#090a0f] border border-[#262a40] text-white text-xs placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
                 />
               </div>
@@ -88,6 +89,7 @@ export default function AdminLogin({ onLoginSuccess }) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
+                  autoComplete="current-password"
                   className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#090a0f] border border-[#262a40] text-white text-xs placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
                 />
               </div>
@@ -124,4 +126,3 @@ export default function AdminLogin({ onLoginSuccess }) {
     </div>
   );
 }
-

@@ -238,7 +238,7 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Sesión activa: <strong className="text-slate-200">{currentUser?.email || 'admin@melofilia.com'}</strong>
+              Sesión activa: <strong className="text-slate-200">{currentUser?.usuario || currentUser?.name || 'Admin'}</strong>
             </p>
           </div>
         </div>

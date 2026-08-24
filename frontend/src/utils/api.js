@@ -33,11 +33,11 @@ export function setAdminUser(user) {
 }
 
 // 1. Autenticación Real de Admin (Drop It Co)
-export async function loginAdmin(email, password) {
+export async function loginAdmin(usuario, password) {
   const res = await fetch(`${API_BASE}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ usuario, password })
   });
 
   if (!res.ok) {

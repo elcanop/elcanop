@@ -41,21 +41,14 @@ const MP_CLIENT_ID = process.env.MERCADO_PAGO_CLIENT_ID || '8212980939632377';
 const MP_CLIENT_SECRET = process.env.MERCADO_PAGO_CLIENT_SECRET || 'v49Y8VkHNwbyuE8oqGIQtEEb4nF1355I';
 const APP_URL = process.env.APP_URL || 'https://melofilia.vercel.app';
 
-// 3. Usuarios Administradores del Sistema (Drop It Co)
+// 3. Usuario Administrador del Sistema (Drop It Co)
 const adminUsers = [
   {
     id: 'usr_owner_01',
-    email: 'admin@melofilia.com',
-    name: 'Admin General (Drop It Co)',
+    usuario: '1140884509',
+    name: 'Administrador (Drop It Co)',
     role: 'OWNER',
-    passwordHash: bcrypt.hashSync('MelofiliaOwner2026!', 10)
-  },
-  {
-    id: 'usr_prod_01',
-    email: 'producer@melofilia.com',
-    name: 'Productor Musical',
-    role: 'PRODUCER',
-    passwordHash: bcrypt.hashSync('MelofiliaProd2026!', 10)
+    passwordHash: bcrypt.hashSync('@Elcanop2396', 10)
   }
 ];
 
@@ -264,29 +257,29 @@ app.get('/api/health', (req, res) => {
 });
 
 app.post('/api/auth/login', authLimiter, (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Correo y contraseña requeridos.' });
+  const { usuario, password } = req.body;
+  if (!usuario || !password) {
+    return res.status(400).json({ error: 'Usuario y contraseña requeridos.' });
   }
 
-  const user = adminUsers.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+  const user = adminUsers.find(u => u.usuario === usuario.trim());
   if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
-    logAuditEvent('LOGIN_FAILED', email, 'Intento fallido de inicio de sesión', req);
-    return res.status(401).json({ error: 'Credenciales inválidas. Verifica tu correo y contraseña.' });
+    logAuditEvent('LOGIN_FAILED', usuario, 'Intento fallido de inicio de sesión', req);
+    return res.status(401).json({ error: 'Credenciales inválidas. Verifica tu usuario y contraseña.' });
   }
 
   const token = jwt.sign(
-    { id: user.id, email: user.email, name: user.name, role: user.role },
+    { id: user.id, usuario: user.usuario, name: user.name, role: user.role },
     JWT_SECRET,
-    { expiresIn: '4h' }
+    { expiresIn: '8h' }
   );
 
-  logAuditEvent('LOGIN_SUCCESS', user.email, `Inicio de sesión exitoso con rol ${user.role}`, req);
+  logAuditEvent('LOGIN_SUCCESS', user.usuario, `Inicio de sesión exitoso con rol ${user.role}`, req);
 
   res.json({
     success: true,
     token,
-    user: { id: user.id, email: user.email, name: user.name, role: user.role }
+    user: { id: user.id, usuario: user.usuario, name: user.name, role: user.role }
   });
 });
 
