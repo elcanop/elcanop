@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Mail, KeyRound, Loader2, AlertCircle, Sparkles, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, KeyRound, Loader2, AlertCircle, ShieldAlert } from 'lucide-react';
 import { loginAdmin } from '../utils/api';
 
 export default function AdminLogin({ onLoginSuccess }) {
@@ -23,16 +23,6 @@ export default function AdminLogin({ onLoginSuccess }) {
     }
   };
 
-  const handleFillDemo = (type) => {
-    if (type === 'OWNER') {
-      setEmail('admin@melofilia.com');
-      setPassword('MelofiliaOwner2026!');
-    } else {
-      setEmail('producer@melofilia.com');
-      setPassword('MelofiliaProd2026!');
-    }
-  };
-
   return (
     <div className="min-h-[75vh] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-8 animate-fadeIn">
@@ -47,7 +37,7 @@ export default function AdminLogin({ onLoginSuccess }) {
             Consola Melofilia
           </h2>
           <p className="text-xs text-slate-400">
-            Ingresa tus credenciales autorizadas con token criptográfico JWT
+            Ingresa tus credenciales autorizadas
           </p>
         </div>
 
@@ -78,7 +68,7 @@ export default function AdminLogin({ onLoginSuccess }) {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@melofilia.com"
+                  placeholder="correo@empresa.com"
                   className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#090a0f] border border-[#262a40] text-white text-xs placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
                 />
               </div>
@@ -122,36 +112,10 @@ export default function AdminLogin({ onLoginSuccess }) {
             </button>
           </form>
 
-          {/* Quick Credential Fill for Development/Demo */}
-          <div className="pt-4 border-t border-[#262a40] space-y-2">
-            <div className="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
-              <span>Credenciales de prueba:</span>
-              <span className="text-[10px] text-violet-400 font-mono">Bcrypt Salt 10</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleFillDemo('OWNER')}
-                className="p-2 rounded-lg bg-[#181b2a] hover:bg-[#202438] text-slate-300 border border-[#262a40] text-[10px] font-bold text-left transition-colors"
-              >
-                <div className="text-violet-300">Rol: OWNER (Full)</div>
-                <div className="text-slate-500 truncate">admin@melofilia.com</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('PRODUCER')}
-                className="p-2 rounded-lg bg-[#181b2a] hover:bg-[#202438] text-slate-300 border border-[#262a40] text-[10px] font-bold text-left transition-colors"
-              >
-                <div className="text-amber-300">Rol: PRODUCER</div>
-                <div className="text-slate-500 truncate">producer@melofilia.com</div>
-              </button>
-            </div>
-          </div>
-
           {/* Security Notice */}
-          <div className="flex items-center gap-2 text-[10px] text-slate-500 justify-center">
+          <div className="flex items-center gap-2 text-[10px] text-slate-500 justify-center pt-2 border-t border-[#262a40]">
             <ShieldAlert className="w-3.5 h-3.5 text-slate-400" />
-            <span>Intentos protegidos por Rate Limiting & JWT Anti-tampering</span>
+            <span>Protegido por Rate Limiting, JWT y cifrado Bcrypt</span>
           </div>
 
         </div>
@@ -160,3 +124,4 @@ export default function AdminLogin({ onLoginSuccess }) {
     </div>
   );
 }
+

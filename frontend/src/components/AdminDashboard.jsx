@@ -4,7 +4,7 @@ import {
   Play, Square, ChevronRight, Eye, CheckCircle2, Sliders, 
   Send, FileText, UserCheck, Sparkles, CreditCard, Loader2, Tag, 
   Percent, DollarSign, Save, Mail, MessageSquare, ThumbsUp, Link, Filter,
-  LogOut, ShieldAlert, Activity, User, Edit3, Volume2, Plus, Disc
+  LogOut, ShieldAlert, Activity, User, Edit3, Volume2, Plus, Disc, Mic
 } from 'lucide-react';
 import { 
   getAdminOrders, updateAdminOrderStatus, simulatePaymentApproval, 
@@ -358,48 +358,62 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
             </div>
 
             <div className="space-y-3">
-              {filteredOrders.map(order => {
-                const isSelected = selectedOrder?.id === order.id;
-                return (
-                  <div
-                    key={order.id}
-                    onClick={() => {
-                      setSelectedOrder(order);
-                      setLyricsDraft(order.current_lyrics || '');
-                      setVersionAUrl(order.version_a_url || '');
-                      setVersionBUrl(order.version_b_url || '');
-                    }}
-                    className={`p-5 rounded-2xl border cursor-pointer transition-all ${
-                      isSelected ? 'bg-[#181b2a] border-amber-500 shadow-lg' : 'bg-[#12141e] border-[#262a40] hover:border-slate-600'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
-                            {order.order_number}
-                          </span>
-                          <span className="text-xs font-bold text-white">{order.customer_name}</span>
+              {filteredOrders.length === 0 ? (
+                <div className="p-8 rounded-2xl bg-[#12141e] border border-dashed border-[#262a40] text-center space-y-3">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto">
+                    <Music className="w-7 h-7 text-amber-400" />
+                  </div>
+                  <h4 className="text-sm font-bold text-white">Sin pedidos {filterStatus !== 'ALL' ? `en estado "${filterStatus.replace(/_/g, ' ')}"` : 'registrados aún'}</h4>
+                  <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                    {filterStatus !== 'ALL' 
+                      ? 'Prueba cambiando el filtro de estado para ver otros pedidos.'
+                      : 'Los pedidos creados por clientes reales desde la página aparecerán aquí automáticamente.'}
+                  </p>
+                </div>
+              ) : (
+                filteredOrders.map(order => {
+                  const isSelected = selectedOrder?.id === order.id;
+                  return (
+                    <div
+                      key={order.id}
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setLyricsDraft(order.current_lyrics || '');
+                        setVersionAUrl(order.version_a_url || '');
+                        setVersionBUrl(order.version_b_url || '');
+                      }}
+                      className={`p-5 rounded-2xl border cursor-pointer transition-all ${
+                        isSelected ? 'bg-[#181b2a] border-amber-500 shadow-lg' : 'bg-[#12141e] border-[#262a40] hover:border-slate-600'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
+                              {order.order_number}
+                            </span>
+                            <span className="text-xs font-bold text-white">{order.customer_name}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 mt-0.5">
+                            {order.genre} · {order.occasion}
+                          </div>
                         </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
-                          {order.genre} · {order.occasion}
-                        </div>
+
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300">
+                          {order.order_status?.replace(/_/g, ' ')}
+                        </span>
                       </div>
 
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300">
-                        {order.order_status?.replace(/_/g, ' ')}
-                      </span>
+                      <div className="flex items-center justify-between pt-2 border-t border-[#262a40]/60 text-[11px] text-slate-400">
+                        <span>Letra: <strong>{order.lyrics_status || 'Pendiente'}</strong></span>
+                        <span className="text-amber-400 font-semibold flex items-center gap-1">
+                          Gestionar <ChevronRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
                     </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-[#262a40]/60 text-[11px] text-slate-400">
-                      <span>Letra: <strong>{order.lyrics_status || 'Pendiente'}</strong></span>
-                      <span className="text-amber-400 font-semibold flex items-center gap-1">
-                        Gestionar <ChevronRight className="w-3.5 h-3.5" />
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 

@@ -96,7 +96,7 @@ export default function App() {
     if (paymentStatus === 'approved') {
       setBannerNotice({
         type: 'success',
-        text: '¡Pago aprobado en Mercado Pago Sandbox! Tu orden ha sido asignada a cola de producción.'
+        text: '¡Pago aprobado exitosamente! Tu orden ha sido asignada a cola de producción.'
       });
       setActiveTab('pedido');
     } else if (paymentStatus === 'rejected') {
@@ -277,14 +277,11 @@ export default function App() {
             <div className="p-4 rounded-2xl bg-[#090a0f] border border-[#262a40] text-xs space-y-2 text-slate-300">
               <div className="font-bold text-white flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                Pasarela Oficial Mercado Pago Sandbox (Colombia)
+                Pago Seguro con Mercado Pago (Colombia)
               </div>
               <p className="text-slate-400 leading-relaxed">
                 Tu pedido ha sido registrado. Incluye revisión previa de letra y entrega de 2 versiones de tu canción.
               </p>
-              <div className="pt-2 border-t border-[#262a40] text-[11px] text-amber-300 font-mono">
-                Usuario prueba: TESTUSER3212403718024316184
-              </div>
             </div>
 
             <div className="space-y-3">

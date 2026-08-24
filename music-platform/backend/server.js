@@ -252,93 +252,11 @@ let pricingConfig = {
   }
 };
 
-// 8. Almacén de Órdenes en Memoria
-const orders = [
-  {
-    id: 'f8b1c4e2-8e3d-4c8d-9c3a-2f4b5a6c7d8e',
-    order_number: 'MP-2026-000184',
-    customer_name: 'Camila Montoya',
-    customer_email: 'camila.montoya@ejemplo.com',
-    customer_phone: '+57 312 456 7890',
-    product_tier: 'SEMI_PRO',
-    genre: 'Balada Pop Acústica',
-    mood: 'Emotiva y Romántica',
-    occasion: 'Aniversario de Bodas (5 años)',
-    story_details: {
-      recipient_name: 'Mariana',
-      relationship: 'Esposa',
-      key_memories: 'Nos conocimos en una cafetería en Medellín un día lluvioso. Ella siempre pide capuchino sin azúcar. El viaje a Santa Marta donde nos comprometimos frente al mar al atardecer.',
-      voice_preference: 'Voz Femenina Cálida',
-      tempo_bpm: 85
-    },
-    key_phrases: [
-      'El café bajo la lluvia',
-      'Nuestro atardecer en Santa Marta',
-      'Cinco años y toda una vida por delante'
-    ],
-    // Flujo de Letra
-    current_lyrics: `[Verso 1]
-La lluvia caía sobre aquel café en Medellín,
-pediste un capuchino y te vi sonreír sin fin.
-Desde esa tarde supe que no había marcha atrás,
-eras el hogar que siempre quise encontrar.
+// 8. Almacén de Órdenes en Memoria (Inicia limpio — solo pedidos reales)
+const orders = [];
 
-[Coro]
-Nuestro atardecer en Santa Marta frente al mar,
-la promesa eterna de quererte y cuidar.
-Cinco años juntos y toda una vida por delante,
-mi Mariana hermosa, mi amor más constante.
-
-[Verso 2]
-Tus chistes en las mañanas cuando todo va mal,
-hacen que cada día sea un viaje especial.
-Hoy celebramos lo vivido y lo que vendrá,
-porque contigo la magia nunca morirá.`,
-    lyrics_status: 'APPROVED', // 'PENDING_PROPOSAL' | 'AWAITING_CLIENT_APPROVAL' | 'APPROVED' | 'ADJUSTMENT_REQUESTED'
-    lyrics_feedback: null,
-    // 2 Versiones de Canción Entregadas
-    version_a_url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=acoustic-guitars-ambient-112347.mp3',
-    version_b_url: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=tropical-house-summer-pop-10338.mp3',
-    total_amount: 280000,
-    currency: 'COP',
-    has_stems: true,
-    payment_status: 'APPROVED',
-    payment_provider: 'MERCADO_PAGO',
-    order_status: 'READY_FOR_CLIENT_REVIEW',
-    corrections_allowed: 1,
-    corrections_used: 0,
-    delivery_assets: {
-      mp3_version_a: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/version_a.mp3',
-      mp3_version_b: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/version_b.mp3',
-      wav_version_a: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/version_a_24bit.wav',
-      wav_version_b: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/version_b_24bit.wav',
-      cover_art_url: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/cover.jpg',
-      lyrics_pdf_url: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/lyrics.pdf',
-      stems_zip_url: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/STEMS.ZIP'
-    },
-    delivered_at: '2026-08-18T00:00:00Z',
-    download_expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
-    created_at: '2026-08-15T10:00:00Z',
-    updated_at: '2026-08-18T00:00:00Z'
-  }
-];
-
-// Almacén de Contacto
-const contactMessages = [
-  {
-    id: 'msg_001',
-    name: 'Carolina Velásquez',
-    email: 'carolina.v@ejemplo.com',
-    category: 'REVIEW',
-    order_number: 'MP-2026-000184',
-    message: '¡Poder escuchar las dos versiones fue maravilloso! Nos quedamos con la versión acústica para el video. Excelente servicio.',
-    status: 'RESOLVED',
-    is_approved_review: true,
-    internal_notes: 'Cliente muy satisfecha.',
-    created_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 12 * 3600 * 1000).toISOString()
-  }
-];
+// Almacén de Contacto (Inicia limpio)
+const contactMessages = [];
 
 // ==========================================
 // 9. ENDPOINTS DE AUTENTICACIÓN ADMIN
