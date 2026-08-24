@@ -1,7 +1,7 @@
 import React from 'react';
-import { Music, Sparkles, Search, PlusCircle, ShieldCheck, MessageSquare, Headphones, Lock } from 'lucide-react';
+import { Music, Sparkles, Search, PlusCircle, MessageSquare } from 'lucide-react';
 
-export default function Navbar({ activeTab, setActiveTab, currentOrderNumber, onOpenContact, adminUser }) {
+export default function Navbar({ activeTab, setActiveTab, currentOrderNumber, onOpenContact }) {
   return (
     <nav className="sticky top-0 z-50 backdrop-blur-xl bg-[#090a0f]/85 border-b border-[#262a40] transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -28,7 +28,7 @@ export default function Navbar({ activeTab, setActiveTab, currentOrderNumber, on
             </div>
           </button>
 
-          {/* Navigation Links */}
+          {/* Public Navigation Links */}
           <div className="hidden md:flex items-center gap-1 bg-[#12141e] p-1.5 rounded-full border border-[#262a40]">
             <button
               onClick={() => setActiveTab('landing')}
@@ -77,36 +77,14 @@ export default function Navbar({ activeTab, setActiveTab, currentOrderNumber, on
             </button>
           </div>
 
-          {/* Admin & Action CTA */}
+          {/* Primary Action CTA */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setActiveTab('admin')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                activeTab === 'admin'
-                  ? 'bg-violet-600/30 text-violet-300 border-violet-500/50'
-                  : 'bg-[#181b2a] text-slate-400 border-[#262a40] hover:text-violet-300 hover:border-violet-500/40'
-              }`}
-              title="Consola Administrativa Segura"
-            >
-              {adminUser ? (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                  <span className="hidden sm:inline">Admin</span> ({adminUser.role})
-                </>
-              ) : (
-                <>
-                  <Lock className="w-3.5 h-3.5 text-violet-400" />
-                  <span className="hidden sm:inline">Admin</span> Login
-                </>
-              )}
-            </button>
-
-            <button
               onClick={() => setActiveTab('crear')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm shadow-lg shadow-amber-500/25 active:scale-95 transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold text-sm shadow-lg shadow-amber-500/25 active:scale-95 transition-all"
             >
               <PlusCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">Empezar Canción</span>
+              <span className="hidden sm:inline">Empezar mi Canción</span>
               <span className="sm:hidden">Crear</span>
             </button>
           </div>

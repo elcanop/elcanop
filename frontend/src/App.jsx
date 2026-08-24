@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import AudioHero from './components/AudioHero';
-import AudioShowcase from './components/AudioShowcase';
 import ComparisonTable from './components/ComparisonTable';
 import HowItWorksAndFaq from './components/HowItWorksAndFaq';
 import StoryComposer from './components/StoryComposer';
@@ -36,7 +35,7 @@ export default function App() {
       current_price: 280000,
       discount_enabled: true,
       discount_badge: '20% OFF',
-      delivery_hours: 72
+      delivery_hours: 48
     },
     stems_addon: {
       name: 'Stems Multipista (ZIP)',
@@ -79,12 +78,15 @@ export default function App() {
   useEffect(() => {
     loadInitialData();
 
-    // Check URL search parameters
+    // Check URL parameters and Hash
     const params = new URLSearchParams(window.location.search);
     const paymentStatus = params.get('payment_status');
     const orderParam = params.get('order');
+    const isAdmin = params.get('admin') === 'true' || window.location.hash === '#admin' || window.location.pathname === '/admin';
 
-    if (orderParam) {
+    if (isAdmin) {
+      setActiveTab('admin');
+    } else if (orderParam) {
       setCurrentOrderNumber(orderParam);
       setActiveTab('pedido');
     }
@@ -101,6 +103,15 @@ export default function App() {
         text: 'El pago no pudo ser completado. Puedes intentar nuevamente desde tu portal de pedido.'
       });
     }
+
+    // Listen to hash change for hidden admin navigation
+    const handleHashChange = () => {
+      if (window.location.hash === '#admin') {
+        setActiveTab('admin');
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   const handleStartCreating = (tier = 'SEMI_PRO') => {
@@ -151,6 +162,7 @@ export default function App() {
     logoutAdmin();
     setAdminUser(null);
     setActiveTab('landing');
+    window.location.hash = '';
   };
 
   return (
@@ -174,13 +186,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Navigation with Drop It Co branding & Admin Auth State */}
+      {/* Navigation (Clean Customer View without Admin Button) */}
       <Navbar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         currentOrderNumber={currentOrderNumber} 
         onOpenContact={() => setIsContactOpen(true)}
-        adminUser={adminUser}
       />
 
       {/* Main Content Areas */}
@@ -192,9 +203,6 @@ export default function App() {
             <AudioHero 
               onStartCreating={() => handleStartCreating('SEMI_PRO')} 
               onHowItWorks={handleHowItWorks}
-            />
-            <AudioShowcase 
-              onStartCreatingWithGenre={(genre) => handleStartCreating('SEMI_PRO')}
             />
             <ComparisonTable 
               pricing={pricing}
@@ -217,14 +225,14 @@ export default function App() {
           />
         )}
 
-        {/* VIEW 3: ORDER TRACKER */}
+        {/* VIEW 3: ORDER TRACKER & LYRICS APPROVAL */}
         {activeTab === 'pedido' && (
           <OrderTracker 
             initialOrderNumber={currentOrderNumber} 
           />
         )}
 
-        {/* VIEW 4: ADMIN CONSOLE (Protected with Real Authentication) */}
+        {/* VIEW 4: ADMIN CONSOLE (Protected with Real JWT Authentication & Unified UI) */}
         {activeTab === 'admin' && (
           adminUser ? (
             <AdminDashboard 
@@ -270,7 +278,7 @@ export default function App() {
                 Pasarela Oficial Mercado Pago Sandbox (Colombia)
               </div>
               <p className="text-slate-400 leading-relaxed">
-                Tu pedido ha sido registrado en el sistema. Puedes proceder al Checkout Sandbox de Mercado Pago para pagar con tarjeta de prueba o saldo de prueba.
+                Tu pedido ha sido registrado. Incluye revisión previa de letra y entrega de 2 versiones de tu canción.
               </p>
               <div className="pt-2 border-t border-[#262a40] text-[11px] text-amber-300 font-mono">
                 Usuario prueba: TESTUSER3212403718024316184

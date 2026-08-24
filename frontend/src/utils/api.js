@@ -109,6 +109,19 @@ export async function getOrder(orderNumber) {
   return res.json();
 }
 
+export async function reviewLyrics(orderNumber, action, feedback) {
+  const res = await fetch(`${API_BASE}/api/orders/${encodeURIComponent(orderNumber)}/review-lyrics`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, feedback })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Error al procesar la revisión de la letra');
+  }
+  return res.json();
+}
+
 export async function submitCorrection(orderNumber, correctionData) {
   const res = await fetch(`${API_BASE}/api/orders/${encodeURIComponent(orderNumber)}/correction`, {
     method: 'POST',
@@ -137,6 +150,12 @@ export async function requestDownloadGrant(orderNumber) {
 export async function getPricingConfig() {
   const res = await fetch(`${API_BASE}/api/config/pricing`);
   if (!res.ok) throw new Error('Error al obtener configuración de precios');
+  return res.json();
+}
+
+export async function getMarketingSongs() {
+  const res = await fetch(`${API_BASE}/api/config/marketing-songs`);
+  if (!res.ok) throw new Error('Error al obtener canciones de marketing');
   return res.json();
 }
 
@@ -171,6 +190,32 @@ export async function getAdminOrders() {
   return res.json();
 }
 
+export async function proposeLyrics(orderNumber, lyrics) {
+  const res = await fetch(`${API_BASE}/api/orders/${encodeURIComponent(orderNumber)}/propose-lyrics`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ lyrics })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al enviar propuesta de letra');
+  }
+  return res.json();
+}
+
+export async function deliverTwoVersions(orderId, version_a_url, version_b_url, production_notes) {
+  const res = await fetch(`${API_BASE}/api/admin/orders/${encodeURIComponent(orderId)}/deliver-versions`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ version_a_url, version_b_url, production_notes })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al entregar versiones');
+  }
+  return res.json();
+}
+
 export async function updateAdminOrderStatus(orderId, updateData) {
   const res = await fetch(`${API_BASE}/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
     method: 'PATCH',
@@ -180,6 +225,19 @@ export async function updateAdminOrderStatus(orderId, updateData) {
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Error al actualizar estado');
+  }
+  return res.json();
+}
+
+export async function updateMarketingSongs(styles) {
+  const res = await fetch(`${API_BASE}/api/admin/marketing-songs`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ styles })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Error al actualizar canciones de marketing');
   }
   return res.json();
 }

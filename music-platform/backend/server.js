@@ -20,17 +20,17 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 app.use(cors({ origin: '*' }));
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '5mb' }));
 
 // 2. Limitadores de Tasa (Rate Limiting)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 10, // 10 intentos
+  max: 10,
   message: { error: 'Demasiados intentos de autenticación. Intenta nuevamente en 15 minutos.' }
 });
 
 const ordersLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hora
+  windowMs: 60 * 60 * 1000,
   max: 40,
   message: { error: 'Límite de pedidos alcanzado temporalmente por seguridad.' }
 });
@@ -118,7 +118,107 @@ function requireRole(allowedRoles = ['OWNER']) {
   };
 }
 
-// Configuración de Precios y Simulación de Descuentos (Administrable desde /admin)
+// 6. Configuración de la Canción de Marketing Multi-Estilo (Administrable)
+let marketingSongStyles = [
+  {
+    id: 'balada',
+    name: 'Balada Pop Acústica',
+    tagline: 'Emotiva, íntima y profunda',
+    tempo: '85 BPM',
+    audio_url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=acoustic-guitars-ambient-112347.mp3',
+    lyrics: `[Verso 1]
+Tienes una historia que merece ser cantada,
+un recuerdo, un amor, una vida compartida.
+En Melofilia no usamos fórmulas armadas,
+creamos tu canción de forma sentida.
+
+[Coro]
+Cuéntanos tu historia, te enviamos la letra hoy,
+tú la revisas y apruebas con emoción.
+Te entregamos dos versiones para que elijas tu voz,
+en 48 horas sonando en tu corazón.
+
+[Verso 2]
+Desde tres horas si tienes urgencia especial,
+con calidad de estudio y master profesional.
+Tu historia en melodía se vuelve inmortal,
+¡Melofilia es tu música real!`
+  },
+  {
+    id: 'pop',
+    name: 'Pop Latino Moderno',
+    tagline: 'Alegre, brillante y pegajosa',
+    tempo: '115 BPM',
+    audio_url: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=tropical-house-summer-pop-10338.mp3',
+    lyrics: `[Verso 1]
+¡Hey! Cuéntanos tu momento especial,
+un cumpleaños, aniversario o detalle sin igual.
+Escribimos la letra para que la leas primero,
+la ajustamos contigo, somos tu equipo sincero.
+
+[Coro]
+¡Dos versiones de tu tema para bailar y cantar!
+Revisa tu letra y prepárate a vibrar.
+Máximo en 48 horas tu historia va a sonar,
+Melofilia en la pista te va a enamorar.`
+  },
+  {
+    id: 'urbano',
+    name: 'Urbano / Reggaetón Flow',
+    tagline: 'Ritmo moderno, bajo potente y fresco',
+    tempo: '96 BPM',
+    audio_url: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8b18721c4.mp3?filename=reggaeton-beat-10982.mp3',
+    lyrics: `[Verso 1]
+De la historia a la pista, sin filtro y con flow,
+Melofilia en la casa armándote el show.
+Escribimos las rimas, revisas el plan,
+aprobamos la letra y los beats llegarán.
+
+[Coro]
+Dos canciones casi iguales para que elijas la mejor,
+máximo en 48 horas o en 3 con calor.
+Tu historia suena a radio, calidad superior,
+Melofilia Studio rompiendo el altavoz.`
+  },
+  {
+    id: 'vallenato',
+    name: 'Vallenato Romántico',
+    tagline: 'Sentimiento puro, acordeón y tradición',
+    tempo: '90 BPM',
+    audio_url: 'https://cdn.pixabay.com/download/audio/2022/11/06/audio_2c52670e30.mp3?filename=latin-acoustic-groove-125488.mp3',
+    lyrics: `[Verso 1]
+Ay, mi gente querida, les vengo a contar,
+que cualquier recuerdo se puede cantar.
+Nos das tu relato y con devoción,
+hacemos los versos de tu gran canción.
+
+[Coro]
+Te paso la letra pa que des el sí,
+te entrego dos temas sabrosos pa ti.
+En 48 horas o en 3 si es de afán,
+con Melofilia los versos nunca morirán.`
+  },
+  {
+    id: 'rock',
+    name: 'Rock Acústico Orgánico',
+    tagline: 'Guitarras potentes, orgánico y auténtico',
+    tempo: '120 BPM',
+    audio_url: 'https://cdn.pixabay.com/download/audio/2022/08/02/audio_884fe92c21.mp3?filename=indie-folk-acoustic-117517.mp3',
+    lyrics: `[Verso 1]
+La guitarra marca el pulso de la verdad,
+convertimos anécdotas en eternidad.
+Lees la letra antes de empezar a grabar,
+dos versiones de estudio para recordar.
+
+[Coro]
+Melofilia suena con fuerza y pasión,
+tu historia en acorde, tu propia canción.
+Máximo en 48 horas master final,
+un regalo que nadie podrá igualar.`
+  }
+];
+
+// 7. Configuración de Precios y Descuentos
 let pricingConfig = {
   express: {
     name: 'Express',
@@ -127,8 +227,8 @@ let pricingConfig = {
     discount_enabled: true,
     discount_badge: '25% OFF',
     delivery_hours: 48,
-    format: 'MP3 320kbps',
-    description: 'Ideal para detalles espontáneos, cumpleaños y sorpresas directas al corazón.'
+    format: '2 Canciones (Versión A y B) + Revisión de Letra + MP3 + PDF',
+    description: 'Entrega estándar en 48h (posibilidad express desde 3h). 2 canciones casi iguales para elegir.'
   },
   semi_pro: {
     name: 'Semi-Pro',
@@ -136,21 +236,21 @@ let pricingConfig = {
     current_price: 280000,
     discount_enabled: true,
     discount_badge: '20% OFF',
-    delivery_hours: 72,
-    format: 'MP3 + WAV Studio (24-bit) + PDF',
-    description: 'Para aniversarios, bodas y homenajes memorables con arreglos multicapa y máxima fidelidad.'
+    delivery_hours: 48,
+    format: '2 Canciones en MP3 + WAV Studio (24-bit) + Revisión de Letra + Carátula Digital + PDF',
+    description: 'Máxima fidelidad acústica multicapa, 2 versiones completas y opción de stems.'
   },
   stems_addon: {
-    name: 'Stems Multipista (ZIP)',
+    name: 'Stems Multipista (STEMS.ZIP)',
     regular_price: 70000,
     current_price: 50000,
     discount_enabled: true,
     discount_badge: 'Ahorra $20.000 COP',
-    description: 'Pistas individuales por separado (Voz, Batería, Bajo, Guitarras, Teclados).'
+    description: 'Pistas individuales por separado en archivo ZIP (Voz, Batería, Bajo, Guitarras, Teclados).'
   }
 };
 
-// Almacén de Órdenes en Memoria
+// 8. Almacén de Órdenes en Memoria
 const orders = [
   {
     id: 'f8b1c4e2-8e3d-4c8d-9c3a-2f4b5a6c7d8e',
@@ -165,44 +265,51 @@ const orders = [
     story_details: {
       recipient_name: 'Mariana',
       relationship: 'Esposa',
-      key_memories: 'Nos conocimos en una cafetería en Medellín un día lluvioso. Ella siempre pide capuchino sin azúcar. El viaje a Santa Marta donde nos comprometimos frente al mar al atardecer. Siempre me hace reír con sus chistes malos cuando estoy estresado.',
+      key_memories: 'Nos conocimos en una cafetería en Medellín un día lluvioso. Ella siempre pide capuchino sin azúcar. El viaje a Santa Marta donde nos comprometimos frente al mar al atardecer.',
       voice_preference: 'Voz Femenina Cálida',
-      tempo_bpm: 85,
-      key_signature: 'G Major (Sol Mayor)',
-      instruments_included: ['Guitarra acústica', 'Piano de cola', 'Cuerdas suaves', 'Percusión sutil'],
-      instruments_excluded: ['Autotune robótico', 'Sintetizadores agresivos', 'Baterías electrónicas']
+      tempo_bpm: 85
     },
     key_phrases: [
       'El café bajo la lluvia',
       'Nuestro atardecer en Santa Marta',
       'Cinco años y toda una vida por delante'
     ],
-    rhythm_reference_path: null,
-    vocal_reference_path: null,
-    client_audio_notes: 'Queremos que el coro sea muy emotivo y que mencione Santa Marta con mucha dulzura.',
+    // Flujo de Letra
+    current_lyrics: `[Verso 1]
+La lluvia caía sobre aquel café en Medellín,
+pediste un capuchino y te vi sonreír sin fin.
+Desde esa tarde supe que no había marcha atrás,
+eras el hogar que siempre quise encontrar.
+
+[Coro]
+Nuestro atardecer en Santa Marta frente al mar,
+la promesa eterna de quererte y cuidar.
+Cinco años juntos y toda una vida por delante,
+mi Mariana hermosa, mi amor más constante.
+
+[Verso 2]
+Tus chistes en las mañanas cuando todo va mal,
+hacen que cada día sea un viaje especial.
+Hoy celebramos lo vivido y lo que vendrá,
+porque contigo la magia nunca morirá.`,
+    lyrics_status: 'APPROVED', // 'PENDING_PROPOSAL' | 'AWAITING_CLIENT_APPROVAL' | 'APPROVED' | 'ADJUSTMENT_REQUESTED'
+    lyrics_feedback: null,
+    // 2 Versiones de Canción Entregadas
+    version_a_url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=acoustic-guitars-ambient-112347.mp3',
+    version_b_url: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=tropical-house-summer-pop-10338.mp3',
     total_amount: 280000,
     currency: 'COP',
     has_stems: true,
     payment_status: 'APPROVED',
     payment_provider: 'MERCADO_PAGO',
-    payment_provider_reference: 'MP-PREF-998231',
     order_status: 'READY_FOR_CLIENT_REVIEW',
-    preview_audio_url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=acoustic-guitars-ambient-112347.mp3',
-    current_version: 'V01',
-    versions: [
-      {
-        version_code: 'V01',
-        created_at: '2026-08-16T14:30:00Z',
-        audio_preview_url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=acoustic-guitars-ambient-112347.mp3',
-        status: 'READY_FOR_REVIEW'
-      }
-    ],
     corrections_allowed: 1,
     corrections_used: 0,
-    corrections: [],
     delivery_assets: {
-      mp3_url: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/master.mp3',
-      wav_url: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/master_24bit.wav',
+      mp3_version_a: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/version_a.mp3',
+      mp3_version_b: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/version_b.mp3',
+      wav_version_a: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/version_a_24bit.wav',
+      wav_version_b: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/version_b_24bit.wav',
       cover_art_url: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/cover.jpg',
       lyrics_pdf_url: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/lyrics.pdf',
       stems_zip_url: 'https://melofilia-storage.r2.cloudflarestorage.com/orders/MP-2026-000184/STEMS.ZIP'
@@ -222,30 +329,17 @@ const contactMessages = [
     email: 'carolina.v@ejemplo.com',
     category: 'REVIEW',
     order_number: 'MP-2026-000184',
-    message: '¡La canción para mi esposo quedó increíble! Lloramos los dos cuando la escuchamos. Muchas gracias a todo el equipo de producción.',
+    message: '¡Poder escuchar las dos versiones fue maravilloso! Nos quedamos con la versión acústica para el video. Excelente servicio.',
     status: 'RESOLVED',
     is_approved_review: true,
-    internal_notes: 'Cliente muy satisfecha. Aprobada para testimonios.',
+    internal_notes: 'Cliente muy satisfecha.',
     created_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 12 * 3600 * 1000).toISOString()
-  },
-  {
-    id: 'msg_002',
-    name: 'Andrés Felipe Morales',
-    email: 'andres.felipe@ejemplo.com',
-    category: 'COTIZACIÓN',
-    order_number: null,
-    message: 'Hola, me gustaría saber si hacen canciones en género Salsa tradicional con metales y coro para los 50 años de mi padre.',
-    status: 'NEW',
-    is_approved_review: false,
-    internal_notes: null,
-    created_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString()
   }
 ];
 
 // ==========================================
-// 6. ENDPOINTS DE AUTENTICACIÓN ADMIN
+// 9. ENDPOINTS DE AUTENTICACIÓN ADMIN
 // ==========================================
 
 app.post('/api/auth/login', authLimiter, (req, res) => {
@@ -261,7 +355,6 @@ app.post('/api/auth/login', authLimiter, (req, res) => {
     return res.status(401).json({ error: 'Credenciales inválidas. Verifica tu correo y contraseña.' });
   }
 
-  // Generar JWT
   const token = jwt.sign(
     { id: user.id, email: user.email, name: user.name, role: user.role },
     JWT_SECRET,
@@ -290,7 +383,31 @@ app.get('/api/auth/me', authenticateJWT, (req, res) => {
 });
 
 // ==========================================
-// 7. ENDPOINTS PÚBLICOS
+// 10. ENDPOINTS DE CANCIÓN DE MARKETING
+// ==========================================
+
+app.get('/api/config/marketing-songs', (req, res) => {
+  res.json(marketingSongStyles);
+});
+
+app.put('/api/admin/marketing-songs', authenticateJWT, (req, res) => {
+  const { styles } = req.body;
+  if (!Array.isArray(styles) || styles.length === 0) {
+    return res.status(400).json({ error: 'Formato de estilos inválido.' });
+  }
+
+  marketingSongStyles = styles;
+  logAuditEvent('MARKETING_SONGS_UPDATED', req.user.email, `Canciones de marketing actualizadas (${styles.length} estilos)`, req);
+
+  res.json({
+    success: true,
+    message: 'Canciones de marketing multi-estilo actualizadas con éxito.',
+    styles: marketingSongStyles
+  });
+});
+
+// ==========================================
+// 11. ENDPOINTS PÚBLICOS
 // ==========================================
 
 app.get('/api/health', (req, res) => {
@@ -353,8 +470,6 @@ app.post('/api/orders', ordersLimiter, async (req, res) => {
       occasion,
       story_details: story_details || {},
       key_phrases,
-      rhythm_reference_path: null,
-      vocal_reference_path: null,
       client_audio_notes,
       total_amount: totalAmount,
       currency: 'COP',
@@ -363,6 +478,13 @@ app.post('/api/orders', ordersLimiter, async (req, res) => {
       payment_provider: 'MERCADO_PAGO',
       payment_provider_reference: null,
       order_status: 'AWAITING_PAYMENT',
+      // Flujo de Letra
+      current_lyrics: null,
+      lyrics_status: 'PENDING_PROPOSAL',
+      lyrics_feedback: null,
+      // 2 Canciones
+      version_a_url: null,
+      version_b_url: null,
       corrections_allowed: 1,
       corrections_used: 0,
       download_expires_at: null,
@@ -387,8 +509,8 @@ app.post('/api/orders', ordersLimiter, async (req, res) => {
           items: [
             {
               id: orderId,
-              title: `Melofilia - Canción Personalizada (${product_tier})`,
-              description: `Producción de canción para ${customer_name} - Pedido ${orderNumber}`,
+              title: `Melofilia - Canción Personalizada (${product_tier}) - 2 Versiones`,
+              description: `Producción de 2 canciones para ${customer_name} - Pedido ${orderNumber}`,
               quantity: 1,
               currency_id: 'COP',
               unit_price: totalAmount
@@ -444,10 +566,100 @@ app.get('/api/orders/:orderNumber', (req, res) => {
   res.json(order);
 });
 
-// Enviar Corrección (1 Sola Vez Permitida)
+// ==========================================
+// 12. FLUJO DE REVISIÓN Y APROBACIÓN DE LETRA
+// ==========================================
+
+// Admin propone letra al cliente
+app.post('/api/orders/:orderNumber/propose-lyrics', authenticateJWT, (req, res) => {
+  const { orderNumber } = req.params;
+  const { lyrics } = req.body;
+
+  if (!lyrics || !lyrics.trim()) {
+    return res.status(400).json({ error: 'El texto de la letra es requerido.' });
+  }
+
+  const order = orders.find(o => o.order_number.toUpperCase() === orderNumber.toUpperCase());
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+
+  order.current_lyrics = lyrics.trim();
+  order.lyrics_status = 'AWAITING_CLIENT_APPROVAL';
+  order.order_status = 'LYRICS_CLIENT_REVIEW';
+  order.updated_at = new Date().toISOString();
+
+  logAuditEvent('LYRICS_PROPOSED', req.user.email, `Propuesta de letra enviada para pedido ${orderNumber}`, req);
+
+  res.json({
+    success: true,
+    message: 'Propuesta de letra enviada al cliente para su revisión.',
+    order
+  });
+});
+
+// Cliente aprueba o solicita ajuste sobre la letra
+app.post('/api/orders/:orderNumber/review-lyrics', (req, res) => {
+  const { orderNumber } = req.params;
+  const { action, feedback } = req.body; // action: 'APPROVE' | 'REQUEST_ADJUSTMENT'
+
+  const order = orders.find(o => o.order_number.toUpperCase() === orderNumber.toUpperCase());
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+
+  if (action === 'APPROVE') {
+    order.lyrics_status = 'APPROVED';
+    order.order_status = 'IN_PRODUCTION';
+    order.lyrics_feedback = null;
+    logAuditEvent('LYRICS_APPROVED', order.customer_email, `Letra aprobada por el cliente para ${orderNumber}`, req);
+  } else if (action === 'REQUEST_ADJUSTMENT') {
+    if (!feedback || !feedback.trim()) {
+      return res.status(400).json({ error: 'Por favor indica qué ajustes deseas en la letra.' });
+    }
+    order.lyrics_status = 'ADJUSTMENT_REQUESTED';
+    order.lyrics_feedback = feedback.trim();
+    order.order_status = 'LYRICS_IN_REVISION';
+    logAuditEvent('LYRICS_ADJUSTMENT_REQUESTED', order.customer_email, `Ajuste de letra solicitado para ${orderNumber}: ${feedback.slice(0, 50)}...`, req);
+  } else {
+    return res.status(400).json({ error: 'Acción inválida. Usa APPROVE o REQUEST_ADJUSTMENT.' });
+  }
+
+  order.updated_at = new Date().toISOString();
+
+  res.json({
+    success: true,
+    message: action === 'APPROVE' 
+      ? '¡Letra aprobada con éxito! Tu canción ha entrado a grabación y producción musical.' 
+      : 'Tus comentarios han sido enviados al productor para ajustar la letra.',
+    order
+  });
+});
+
+// Subir y Entregar 2 Versiones de Canción (Admin)
+app.patch('/api/admin/orders/:id/deliver-versions', authenticateJWT, (req, res) => {
+  const { id } = req.params;
+  const { version_a_url, version_b_url, production_notes } = req.body;
+
+  const order = orders.find(o => o.id === id || o.order_number === id);
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+
+  if (version_a_url) order.version_a_url = version_a_url;
+  if (version_b_url) order.version_b_url = version_b_url;
+  if (production_notes) order.production_notes = production_notes;
+
+  order.order_status = 'READY_FOR_CLIENT_REVIEW';
+  order.updated_at = new Date().toISOString();
+
+  logAuditEvent('VERSIONS_DELIVERED', req.user.email, `2 Versiones entregadas para pedido ${order.order_number}`, req);
+
+  res.json({
+    success: true,
+    message: 'Las 2 versiones de la canción han sido cargadas exitosamente para previsualización del cliente.',
+    order
+  });
+});
+
+// Corrección de Audio (1 Sola Vez Permitida)
 app.post('/api/orders/:orderNumber/correction', (req, res) => {
   const { orderNumber } = req.params;
-  const { requested_by, category = 'LYRICS', specific_instructions } = req.body;
+  const { category = 'AUDIO_MIX', specific_instructions } = req.body;
 
   const order = orders.find(o => o.order_number.toUpperCase() === orderNumber.toUpperCase());
   if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
@@ -471,7 +683,7 @@ app.post('/api/orders/:orderNumber/correction', (req, res) => {
   order.order_status = 'CORRECTION_REQUESTED';
   order.updated_at = new Date().toISOString();
 
-  logAuditEvent('CORRECTION_REQUESTED', order.customer_email, `Corrección solicitada para ${orderNumber}`, req);
+  logAuditEvent('CORRECTION_REQUESTED', order.customer_email, `Corrección de audio solicitada para ${orderNumber}`, req);
 
   res.json({
     success: true,
@@ -481,7 +693,7 @@ app.post('/api/orders/:orderNumber/correction', (req, res) => {
   });
 });
 
-// Bóveda de Descargas: Emisión de Token Temporal Seguro
+// Bóveda de Descargas: Emisión de Token Temporal Seguro para 2 Versiones
 app.post('/api/orders/:orderNumber/download-grant', (req, res) => {
   const { orderNumber } = req.params;
   const order = orders.find(o => o.order_number.toUpperCase() === orderNumber.toUpperCase());
@@ -492,7 +704,6 @@ app.post('/api/orders/:orderNumber/download-grant', (req, res) => {
     return res.status(400).json({ error: 'Los archivos aún no están en estado de entrega definitiva.' });
   }
 
-  // Verificar ventana de 7 días
   if (order.download_expires_at && new Date() > new Date(order.download_expires_at)) {
     return res.status(410).json({ 
       error: 'La ventana de descarga de 7 días ha expirado. Contacta a soporte para reactivación.' 
@@ -513,8 +724,10 @@ app.post('/api/orders/:orderNumber/download-grant', (req, res) => {
     expires_in_seconds: 300,
     download_window_expires_at: order.download_expires_at,
     assets: {
-      mp3_url: `${order.delivery_assets?.mp3_url || ''}?grant=${token}`,
-      wav_url: order.product_tier === 'SEMI_PRO' ? `${order.delivery_assets?.wav_url || ''}?grant=${token}` : null,
+      mp3_version_a: `${order.delivery_assets?.mp3_version_a || ''}?grant=${token}`,
+      mp3_version_b: `${order.delivery_assets?.mp3_version_b || ''}?grant=${token}`,
+      wav_version_a: order.product_tier === 'SEMI_PRO' ? `${order.delivery_assets?.wav_version_a || ''}?grant=${token}` : null,
+      wav_version_b: order.product_tier === 'SEMI_PRO' ? `${order.delivery_assets?.wav_version_b || ''}?grant=${token}` : null,
       cover_art_url: order.product_tier === 'SEMI_PRO' ? `${order.delivery_assets?.cover_art_url || ''}?grant=${token}` : null,
       lyrics_pdf_url: `${order.delivery_assets?.lyrics_pdf_url || ''}?grant=${token}`,
       stems_zip_url: order.has_stems ? `${order.delivery_assets?.stems_zip_url || ''}?grant=${token}` : null
@@ -559,7 +772,7 @@ app.post('/api/contact', contactLimiter, (req, res) => {
 });
 
 // ==========================================
-// 8. ENDPOINTS ADMINISTRATIVOS PROTEGIDOS
+// 13. ENDPOINTS ADMINISTRATIVOS PROTEGIDOS
 // ==========================================
 
 // Consultar Pedidos
@@ -573,14 +786,15 @@ app.get('/api/admin/orders', authenticateJWT, (req, res) => {
 // Actualizar Estado de Pedido
 app.patch('/api/admin/orders/:id/status', authenticateJWT, (req, res) => {
   const { id } = req.params;
-  const { status, preview_audio_url, production_notes } = req.body;
+  const { status, version_a_url, version_b_url, production_notes } = req.body;
 
   const order = orders.find(o => o.id === id || o.order_number === id);
   if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
 
   const oldStatus = order.order_status;
   order.order_status = status;
-  if (preview_audio_url) order.preview_audio_url = preview_audio_url;
+  if (version_a_url) order.version_a_url = version_a_url;
+  if (version_b_url) order.version_b_url = version_b_url;
   if (production_notes) order.production_notes = production_notes;
   
   if (status === 'DELIVERED') {
@@ -664,7 +878,7 @@ app.post('/api/admin/simulate-payment', authenticateJWT, (req, res) => {
   if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
 
   order.payment_status = 'APPROVED';
-  order.order_status = 'QUEUED';
+  order.order_status = 'IN_PRODUCTION';
   order.updated_at = new Date().toISOString();
 
   logAuditEvent('PAYMENT_SIMULATED', req.user.email, `Pago simulado como APROBADO para ${orderNumber}`, req);
@@ -679,6 +893,6 @@ app.post('/api/admin/simulate-payment', authenticateJWT, (req, res) => {
 app.listen(PORT, () => {
   console.log(`🎵 Melofilia API Server (Drop It Co) escuchando en http://localhost:${PORT}`);
   console.log(`🛡️ Seguridad JWT & Rate Limiting: ACTIVOS`);
-  console.log(`💳 Mercado Pago Sandbox: ACTIVO (Moneda: COP)`);
-  console.log(`🏷️ Control de Precios y Auditoría: HABILITADOS`);
+  console.log(`🎼 Canción de Marketing Multi-Estilo: HABILITADA`);
+  console.log(`✍️ Flujo de Revisión de Letras & 2 Versiones: HABILITADO`);
 });

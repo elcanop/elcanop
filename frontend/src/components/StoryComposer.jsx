@@ -556,12 +556,12 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                     </span>
                   </div>
                 </div>
-                <p className="text-xs text-slate-400 mb-4">Producto de entrada con entrega en 48h.</p>
+                <p className="text-xs text-slate-400 mb-4">Entrega en máx. 48h (desde 3h express). Recibes 2 versiones.</p>
                 <ul className="text-xs space-y-2 text-slate-300">
-                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> Canción y letra personalizada</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> Master final en MP3 (320kbps)</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> Letra en PDF lista para imprimir</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> 1 Corrección incluida</li>
+                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> <strong>2 Canciones terminadas:</strong> 2 versiones casi iguales</li>
+                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> <strong>Revisión de Letra:</strong> Aprobación antes de grabar</li>
+                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> Master final en MP3 (320kbps) + Letra en PDF</li>
+                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-400" /> 1 Corrección incluida sobre audio</li>
                 </ul>
               </div>
 
@@ -589,9 +589,10 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                     </span>
                   </div>
                 </div>
-                <p className="text-xs text-slate-400 mb-4">Producto de mayor elaboración con entrega en 72h.</p>
+                <p className="text-xs text-slate-400 mb-4">Entrega en máx. 48h (desde 3h express). Producción de estudio.</p>
                 <ul className="text-xs space-y-2 text-slate-200">
-                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-amber-400" /> Letra con mayor desarrollo y métrica</li>
+                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-amber-400" /> <strong>2 Canciones terminadas:</strong> 2 versiones de estudio</li>
+                  <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-amber-400" /> <strong>Revisión de Letra:</strong> Aprobación antes de grabar</li>
                   <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-amber-400" /> Master en MP3 + WAV Studio (24-bit)</li>
                   <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-amber-400" /> Carátula digital personalizada + PDF</li>
                   <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-amber-400" /> 1 Corrección garantizada</li>
