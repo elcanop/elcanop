@@ -444,7 +444,9 @@ app.post('/api/orders', ordersLimiter, async (req, res) => {
       story_details,
       key_phrases = [],
       has_stems = false,
-      client_audio_notes = ''
+      client_audio_notes = '',
+      rhythm_audio_data = null,
+      voice_audio_data = null
     } = req.body;
 
     if (!customer_name || !customer_email || !genre) {
@@ -473,6 +475,8 @@ app.post('/api/orders', ordersLimiter, async (req, res) => {
       story_details: story_details || {},
       key_phrases,
       client_audio_notes,
+      rhythm_audio_data,
+      voice_audio_data,
       total_amount: totalAmount,
       currency: 'COP',
       has_stems,
@@ -501,6 +505,7 @@ app.post('/api/orders', ordersLimiter, async (req, res) => {
     let preferenceId = '';
 
     try {
+      const hostUrl = req.headers.host ? `https://${req.headers.host}` : APP_URL;
       const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
         method: 'POST',
         headers: {
@@ -512,22 +517,26 @@ app.post('/api/orders', ordersLimiter, async (req, res) => {
             {
               id: orderId,
               title: `Melofilia - Canción Personalizada (${product_tier}) - 2 Versiones`,
-              description: `Producción de 2 canciones para ${customer_name} - Pedido ${orderNumber}`,
+              description: `Producción musical personalizada para ${customer_name} - Ref: ${orderNumber}`,
               quantity: 1,
               currency_id: 'COP',
               unit_price: totalAmount
             }
           ],
-          payer: {
-            email: customer_email
+          payer: { 
+            name: customer_name,
+            email: customer_email,
+            phone: {
+              number: customer_phone ? customer_phone.replace(/[^0-9]/g, '') : ''
+            }
           },
           external_reference: orderNumber,
           back_urls: {
-            success: `${APP_URL}/pedido/${orderNumber}?payment_status=approved`,
-            failure: `${APP_URL}/pedido/${orderNumber}?payment_status=rejected`,
-            pending: `${APP_URL}/pedido/${orderNumber}?payment_status=pending`
+            success: `${hostUrl}/?order=${orderNumber}&payment_status=approved`,
+            failure: `${hostUrl}/?order=${orderNumber}&payment_status=rejected`,
+            pending: `${hostUrl}/?order=${orderNumber}&payment_status=pending`
           },
-          ...(APP_URL.startsWith('https://') ? { auto_return: 'approved' } : {}),
+          auto_return: 'approved',
           statement_descriptor: 'MELOFILIA'
         })
       });
@@ -535,7 +544,8 @@ app.post('/api/orders', ordersLimiter, async (req, res) => {
       if (mpResponse.ok) {
         const mpData = await mpResponse.json();
         preferenceId = mpData.id;
-        checkoutUrl = mpData.sandbox_init_point || mpData.init_point;
+        // Real Mercado Pago Production Checkout URL
+        checkoutUrl = mpData.init_point || mpData.sandbox_init_point;
         newOrder.payment_provider_reference = preferenceId;
       }
     } catch (mpErr) {

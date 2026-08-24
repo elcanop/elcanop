@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Heart, Sparkles, Music, Mic, Upload, ArrowRight, ArrowLeft, 
   Check, CreditCard, ShieldCheck, Plus, X, AlertCircle, Loader2, Tag, 
-  Volume2, FastForward, Play, Square, FileText, CheckCircle2 
+  Volume2, FastForward, Play, Square, FileText, CheckCircle2, Trash2, Pause 
 } from 'lucide-react';
 import { createOrder } from '../utils/api';
 import confetti from 'canvas-confetti';
@@ -17,11 +17,35 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
   const semiProConfig = pricing?.semi_pro || { regular_price: 350000, current_price: 280000, discount_enabled: true, discount_badge: '20% OFF' };
   const stemsConfig = pricing?.stems_addon || { regular_price: 70000, current_price: 50000, discount_enabled: true, discount_badge: 'Ahorra $20.000' };
 
-  // Form State (6 Steps)
+  // Rhythm Audio State
+  const [rhythmAudio, setRhythmAudio] = useState(null); // { url, base64, name, type: 'recorded' | 'uploaded' }
+  const [isRecordingRhythm, setIsRecordingRhythm] = useState(false);
+  const [rhythmSeconds, setRhythmSeconds] = useState(0);
+  const rhythmMediaRecorderRef = useRef(null);
+  const rhythmChunksRef = useRef([]);
+  const rhythmTimerRef = useRef(null);
+  const rhythmFileInputRef = useRef(null);
+
+  // Vocal Audio State
+  const [voiceAudio, setVoiceAudio] = useState(null); // { url, base64, name, type: 'recorded' | 'uploaded' }
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [voiceSeconds, setVoiceSeconds] = useState(0);
+  const voiceMediaRecorderRef = useRef(null);
+  const voiceChunksRef = useRef([]);
+  const voiceTimerRef = useRef(null);
+  const voiceFileInputRef = useRef(null);
+
+  // Form State (6 Steps) — Key phrases starts EMPTY without preconfigured tags
   const [formData, setFormData] = useState(() => {
     const saved = localStorage.getItem('melofilia_draft_story');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { 
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          key_phrases: parsed.key_phrases || []
+        };
+      } catch (e) {}
     }
     return {
       customer_name: '',
@@ -32,7 +56,7 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
       occasion: 'Aniversario',
       // Paso 2: Historia
       key_memories: '',
-      key_phrases: ['Nuestra historia recién comienza', 'Juntos en cada paso'],
+      key_phrases: [], // Sin etiquetas preconfiguradas
       newPhrase: '',
       // Paso 3: Identidad Musical
       genre: 'Balada Pop Acústica',
@@ -41,8 +65,8 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
       intensity: 'Media', // Suave, Media, Enérgica, Épica
       voice_preference: 'Voz Femenina',
       // Paso 4: Referencias
-      rhythm_reference_type: 'none', // 'none' | 'recorded' | 'uploaded'
-      vocal_reference_type: 'none',  // 'none' | 'recorded' | 'uploaded'
+      rhythm_reference_type: 'none',
+      vocal_reference_type: 'none',
       client_audio_notes: '',
       // Paso 5: Producto
       product_tier: initialTier,
@@ -65,7 +89,7 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
 
   // Add Phrase Tag
   const handleAddPhrase = () => {
-    if (formData.newPhrase.trim()) {
+    if (formData.newPhrase && formData.newPhrase.trim()) {
       setFormData({
         ...formData,
         key_phrases: [...formData.key_phrases, formData.newPhrase.trim()],
@@ -79,6 +103,142 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
       ...formData,
       key_phrases: formData.key_phrases.filter((_, i) => i !== index)
     });
+  };
+
+  // --- AUDIO RECORDING & UPLOAD HANDLERS ---
+
+  // 1. Rhythm Recording
+  const startRecordingRhythm = async () => {
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      rhythmMediaRecorderRef.current = mediaRecorder;
+      rhythmChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) rhythmChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(rhythmChunksRef.current, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          setRhythmAudio({
+            url,
+            base64: reader.result,
+            name: `Ritmo_Grabado_${Date.now().toString().slice(-4)}.webm`,
+            type: 'recorded'
+          });
+          setFormData(prev => ({ ...prev, rhythm_reference_type: 'recorded' }));
+        };
+        stream.getTracks().forEach(t => t.stop());
+      };
+
+      mediaRecorder.start(200);
+      setIsRecordingRhythm(true);
+      setRhythmSeconds(0);
+      rhythmTimerRef.current = setInterval(() => {
+        setRhythmSeconds(s => s + 1);
+      }, 1000);
+    } catch (err) {
+      setError('Permite el acceso al micrófono en tu navegador para grabar tu referencia.');
+    }
+  };
+
+  const stopRecordingRhythm = () => {
+    if (rhythmMediaRecorderRef.current && isRecordingRhythm) {
+      rhythmMediaRecorderRef.current.stop();
+      setIsRecordingRhythm(false);
+      if (rhythmTimerRef.current) clearInterval(rhythmTimerRef.current);
+    }
+  };
+
+  const handleUploadRhythm = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = () => {
+      setRhythmAudio({
+        url,
+        base64: reader.result,
+        name: file.name,
+        size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        type: 'uploaded'
+      });
+      setFormData(prev => ({ ...prev, rhythm_reference_type: 'uploaded' }));
+    };
+  };
+
+  // 2. Vocal Recording
+  const startRecordingVoice = async () => {
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      voiceMediaRecorderRef.current = mediaRecorder;
+      voiceChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) voiceChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(voiceChunksRef.current, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          setVoiceAudio({
+            url,
+            base64: reader.result,
+            name: `Voz_Grabada_${Date.now().toString().slice(-4)}.webm`,
+            type: 'recorded'
+          });
+          setFormData(prev => ({ ...prev, vocal_reference_type: 'recorded' }));
+        };
+        stream.getTracks().forEach(t => t.stop());
+      };
+
+      mediaRecorder.start(200);
+      setIsRecordingVoice(true);
+      setVoiceSeconds(0);
+      voiceTimerRef.current = setInterval(() => {
+        setVoiceSeconds(s => s + 1);
+      }, 1000);
+    } catch (err) {
+      setError('Permite el acceso al micrófono en tu navegador para grabar tu referencia de voz.');
+    }
+  };
+
+  const stopRecordingVoice = () => {
+    if (voiceMediaRecorderRef.current && isRecordingVoice) {
+      voiceMediaRecorderRef.current.stop();
+      setIsRecordingVoice(false);
+      if (voiceTimerRef.current) clearInterval(voiceTimerRef.current);
+    }
+  };
+
+  const handleUploadVoice = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = () => {
+      setVoiceAudio({
+        url,
+        base64: reader.result,
+        name: file.name,
+        size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        type: 'uploaded'
+      });
+      setFormData(prev => ({ ...prev, vocal_reference_type: 'uploaded' }));
+    };
   };
 
   const handleNext = () => {
@@ -151,7 +311,9 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
         },
         key_phrases: formData.key_phrases,
         has_stems: formData.has_stems,
-        client_audio_notes: formData.client_audio_notes
+        client_audio_notes: formData.client_audio_notes,
+        rhythm_audio_data: rhythmAudio?.base64 || null,
+        voice_audio_data: voiceAudio?.base64 || null
       };
 
       const response = await createOrder(orderPayload);
@@ -163,8 +325,16 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
       });
 
       localStorage.removeItem('melofilia_draft_story');
+      if (response.order?.order_number) {
+        localStorage.setItem('melofilia_last_order', response.order.order_number);
+      }
 
       if (response.checkoutUrl) {
+        // Redirigir directamente al Checkout oficial de Mercado Pago o notificar
+        if (response.checkoutUrl.startsWith('https://www.mercadopago.com') || response.checkoutUrl.startsWith('https://mercadopago.com')) {
+          window.location.href = response.checkoutUrl;
+          return;
+        }
         onOrderCreated(response.order.order_number, response.checkoutUrl);
       } else {
         onOrderCreated(response.order.order_number);
@@ -384,23 +554,29 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                 </button>
               </div>
 
-              {/* Tag List */}
-              <div className="flex flex-wrap gap-2">
-                {formData.key_phrases.map((phrase, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium"
-                  >
-                    <span>"{phrase}"</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePhrase(idx)}
-                      className="hover:text-amber-100"
+              {/* Tag List — Starts clean with NO pre-configured chips */}
+              <div className="flex flex-wrap gap-2 min-h-[32px] items-center">
+                {formData.key_phrases.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic">
+                    Sin etiquetas preconfiguradas. Agrega arriba los nombres, apodos o frases que quieras que rimen (opcional).
+                  </p>
+                ) : (
+                  formData.key_phrases.map((phrase, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium animate-fadeIn"
                     >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </span>
-                ))}
+                      <span>"{phrase}"</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhrase(idx)}
+                        className="hover:text-amber-100"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -411,21 +587,21 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-semibold text-slate-200 mb-2">
-                Género Principal:
+                Selecciona el Género Musical Principal:
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {[
-                  'Pop', 'Reggaetón', 'Salsa', 'Vallenato',
-                  'Bachata', 'Balada', 'Urbano', 'Rock', 'Bolero', 'Otro'
+                  'Balada Pop Acústica', 'Pop Latino Moderno', 'Urbano / Reggaetón Flow',
+                  'Vallenato Romántico', 'Rock Acústico', 'Bolero Clásico', 'Salsa Romántica', 'Otro'
                 ].map((g) => (
                   <button
                     key={g}
                     type="button"
                     onClick={() => setFormData({ ...formData, genre: g })}
-                    className={`p-3 rounded-xl border text-xs font-semibold text-center transition-all ${
+                    className={`p-3.5 rounded-xl border text-xs font-semibold text-center transition-all ${
                       formData.genre === g
                         ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm'
-                        : 'bg-[#181b2a] border-[#262a40] text-slate-300 hover:border-slate-600'
+                        : 'bg-[#181b2a] border-[#262a40] text-slate-300'
                     }`}
                   >
                     {g}
@@ -434,9 +610,9 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
               </div>
 
               {formData.genre === 'Otro' && (
-                <div className="mt-3.5 p-3.5 rounded-2xl bg-[#090a0f] border border-amber-500/40 space-y-1.5 animate-fadeIn">
+                <div className="mt-3 p-3.5 rounded-2xl bg-[#090a0f] border border-amber-500/40 space-y-1.5 animate-fadeIn">
                   <label className="block text-xs font-bold text-amber-400">
-                    Especifica tu género o estilo musical preferido:
+                    Escribe tu género musical deseado:
                   </label>
                   <input
                     type="text"
@@ -453,23 +629,23 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-slate-200 mb-2">
-                  Estado Emocional:
+                  Estado Emocional (Mood):
                 </label>
                 <select
                   value={formData.mood}
                   onChange={(e) => setFormData({ ...formData, mood: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-[#090a0f] border border-[#262a40] text-white focus:outline-none focus:border-amber-500 text-sm"
+                  className="w-full px-4 py-3 rounded-xl bg-[#090a0f] border border-[#262a40] text-white text-xs focus:outline-none focus:border-amber-500"
                 >
-                  <option value="Emotiva y Romántica">Emotiva y Romántica (Para tocar el corazón)</option>
-                  <option value="Alegre y Enérgica">Alegre y Enérgica (Para cantar y bailar)</option>
-                  <option value="Nostálgica y Profunda">Nostálgica y Profunda (Recuerdos de vida)</option>
-                  <option value="Épica y Triunfal">Épica y Triunfal (Homenaje de superación)</option>
-                  <option value="Divertida y Pícara">Divertida y Alegre</option>
-                  <option value="Otro">Otro estado emocional (personalizado)...</option>
+                  <option>Emotiva y Romántica</option>
+                  <option>Alegre y Festiva</option>
+                  <option>Nostálgica y Profunda</option>
+                  <option>Épica e Inspiracional</option>
+                  <option>Íntima y Acústica</option>
+                  <option>Otro</option>
                 </select>
 
                 {formData.mood === 'Otro' && (
-                  <div className="mt-2.5 animate-fadeIn">
+                  <div className="mt-2 p-2.5 rounded-xl bg-[#12141e] border border-amber-500/40">
                     <input
                       type="text"
                       required
@@ -545,86 +721,192 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
           </div>
         )}
 
-        {/* PASO 4 — REFERENCIAS (OPCIONALES) */}
+        {/* PASO 4 — REFERENCIAS EN VIVO (RITMO Y VOZ CON GRABACIÓN & SUBIDA REAL) */}
         {step === 4 && (
           <div className="space-y-6">
             <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2.5">
               <Sparkles className="w-5 h-5 text-amber-400 shrink-0" />
               <span>
-                <strong>Las grabaciones son completamente opcionales.</strong> Si no tienes referencias de audio, puedes continuar directamente.
+                <strong>Las grabaciones son completamente opcionales.</strong> Puedes grabar con tu micrófono, subir archivos de audio o continuar directamente si no tienes referencias.
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               
-              {/* Referencia Rítmica */}
-              <div className="p-5 rounded-2xl bg-[#090a0f] border border-[#262a40] space-y-3">
-                <div className="flex items-center gap-2 text-white font-bold text-sm">
-                  <Music className="w-4 h-4 text-amber-400" />
-                  <span>Referencia Rítmica (Opcional)</span>
+              {/* 1. Referencia Rítmica Funcional */}
+              <div className="p-5 rounded-2xl bg-[#090a0f] border border-[#262a40] space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-white font-bold text-sm">
+                    <Music className="w-4 h-4 text-amber-400" />
+                    <span>Referencia Rítmica (Opcional)</span>
+                  </div>
+                  {rhythmAudio && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Audio Listo
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-slate-400">
-                  Para explicar cadencia, ritmo o una idea musical específica.
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Para explicar la cadencia, el compás o una idea musical específica.
                 </p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, rhythm_reference_type: 'recorded' })}
-                    className={`flex-1 p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 ${
-                      formData.rhythm_reference_type === 'recorded'
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
-                        : 'bg-[#181b2a] border-[#262a40] text-slate-300'
-                    }`}
-                  >
-                    <Mic className="w-3.5 h-3.5" /> Grabar Ritmo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, rhythm_reference_type: 'uploaded' })}
-                    className={`flex-1 p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 ${
-                      formData.rhythm_reference_type === 'uploaded'
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
-                        : 'bg-[#181b2a] border-[#262a40] text-slate-300'
-                    }`}
-                  >
-                    <Upload className="w-3.5 h-3.5" /> Subir Audio
-                  </button>
-                </div>
+
+                {/* Input File Oculto */}
+                <input
+                  type="file"
+                  ref={rhythmFileInputRef}
+                  onChange={handleUploadRhythm}
+                  accept="audio/*"
+                  className="hidden"
+                />
+
+                {/* Estado de Grabación o Botones */}
+                {!rhythmAudio && (
+                  <div>
+                    {isRecordingRhythm ? (
+                      <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/40 flex items-center justify-between animate-pulse">
+                        <div className="flex items-center gap-2 text-rose-300 text-xs font-bold">
+                          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                          <span>Grabando micrófono... {Math.floor(rhythmSeconds / 60)}:{String(rhythmSeconds % 60).padStart(2, '0')}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={stopRecordingRhythm}
+                          className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md"
+                        >
+                          <Square className="w-3.5 h-3.5" /> Detener
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={startRecordingRhythm}
+                          className="flex-1 p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 bg-[#181b2a] hover:bg-amber-500/10 border-[#262a40] hover:border-amber-500/50 text-slate-200 hover:text-amber-300 transition-all"
+                        >
+                          <Mic className="w-4 h-4 text-amber-400" /> Grabar Ritmo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => rhythmFileInputRef.current?.click()}
+                          className="flex-1 p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 bg-[#181b2a] hover:bg-amber-500/10 border-[#262a40] hover:border-amber-500/50 text-slate-200 hover:text-amber-300 transition-all"
+                        >
+                          <Upload className="w-4 h-4 text-amber-400" /> Subir Audio
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Reproductor de Preview cuando hay audio cargado */}
+                {rhythmAudio && (
+                  <div className="p-3.5 rounded-xl bg-[#12141e] border border-amber-500/30 space-y-2.5 animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-300 truncate max-w-[200px]">
+                        🎵 {rhythmAudio.name} {rhythmAudio.size ? `(${rhythmAudio.size})` : ''}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRhythmAudio(null);
+                          setFormData(prev => ({ ...prev, rhythm_reference_type: 'none' }));
+                        }}
+                        className="text-slate-400 hover:text-rose-400 p-1 transition-colors"
+                        title="Eliminar y volver a grabar"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <audio controls src={rhythmAudio.url} className="w-full h-8 rounded-lg" />
+                  </div>
+                )}
               </div>
 
-              {/* Referencia Vocal */}
-              <div className="p-5 rounded-2xl bg-[#090a0f] border border-[#262a40] space-y-3">
-                <div className="flex items-center gap-2 text-white font-bold text-sm">
-                  <Volume2 className="w-4 h-4 text-amber-400" />
-                  <span>Referencia Vocal (Opcional)</span>
+              {/* 2. Referencia Vocal Funcional */}
+              <div className="p-5 rounded-2xl bg-[#090a0f] border border-[#262a40] space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-white font-bold text-sm">
+                    <Volume2 className="w-4 h-4 text-amber-400" />
+                    <span>Referencia Vocal (Opcional)</span>
+                  </div>
+                  {voiceAudio && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Voz Lista
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-slate-400">
-                  Para explicar intención, pronunciación o forma de cantar.
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Para explicar la intención, pronunciación exacta de nombres o forma de cantar.
                 </p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, vocal_reference_type: 'recorded' })}
-                    className={`flex-1 p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 ${
-                      formData.vocal_reference_type === 'recorded'
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
-                        : 'bg-[#181b2a] border-[#262a40] text-slate-300'
-                    }`}
-                  >
-                    <Mic className="w-3.5 h-3.5" /> Grabar Voz
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, vocal_reference_type: 'uploaded' })}
-                    className={`flex-1 p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 ${
-                      formData.vocal_reference_type === 'uploaded'
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
-                        : 'bg-[#181b2a] border-[#262a40] text-slate-300'
-                    }`}
-                  >
-                    <Upload className="w-3.5 h-3.5" /> Subir Audio
-                  </button>
-                </div>
+
+                {/* Input File Oculto */}
+                <input
+                  type="file"
+                  ref={voiceFileInputRef}
+                  onChange={handleUploadVoice}
+                  accept="audio/*"
+                  className="hidden"
+                />
+
+                {/* Estado de Grabación o Botones */}
+                {!voiceAudio && (
+                  <div>
+                    {isRecordingVoice ? (
+                      <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/40 flex items-center justify-between animate-pulse">
+                        <div className="flex items-center gap-2 text-rose-300 text-xs font-bold">
+                          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                          <span>Grabando tu voz... {Math.floor(voiceSeconds / 60)}:{String(voiceSeconds % 60).padStart(2, '0')}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={stopRecordingVoice}
+                          className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md"
+                        >
+                          <Square className="w-3.5 h-3.5" /> Detener
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={startRecordingVoice}
+                          className="flex-1 p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 bg-[#181b2a] hover:bg-amber-500/10 border-[#262a40] hover:border-amber-500/50 text-slate-200 hover:text-amber-300 transition-all"
+                        >
+                          <Mic className="w-4 h-4 text-amber-400" /> Grabar Voz
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => voiceFileInputRef.current?.click()}
+                          className="flex-1 p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 bg-[#181b2a] hover:bg-amber-500/10 border-[#262a40] hover:border-amber-500/50 text-slate-200 hover:text-amber-300 transition-all"
+                        >
+                          <Upload className="w-4 h-4 text-amber-400" /> Subir Audio
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Reproductor de Preview cuando hay voz cargada */}
+                {voiceAudio && (
+                  <div className="p-3.5 rounded-xl bg-[#12141e] border border-amber-500/30 space-y-2.5 animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-300 truncate max-w-[200px]">
+                        🎤 {voiceAudio.name} {voiceAudio.size ? `(${voiceAudio.size})` : ''}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVoiceAudio(null);
+                          setFormData(prev => ({ ...prev, vocal_reference_type: 'none' }));
+                        }}
+                        className="text-slate-400 hover:text-rose-400 p-1 transition-colors"
+                        title="Eliminar y volver a grabar"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <audio controls src={voiceAudio.url} className="w-full h-8 rounded-lg" />
+                  </div>
+                )}
               </div>
 
             </div>
@@ -642,14 +924,14 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
               />
             </div>
 
-            {/* Prominent Button: CONTINUAR SIN GRABACIÓN as per Section 4 */}
+            {/* Botón Principal: CONTINUAR SIN GRABACIÓN */}
             <div className="pt-2">
               <button
                 type="button"
                 onClick={handleNext}
                 className="w-full py-3.5 px-4 rounded-xl bg-[#181b2a] hover:bg-[#202438] text-amber-300 border border-amber-500/40 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
               >
-                <span>CONTINUAR SIN GRABACIÓN</span>
+                <span>CONTINUAR {rhythmAudio || voiceAudio ? 'CON REFERENCIAS' : 'SIN GRABACIÓN'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

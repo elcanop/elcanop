@@ -499,6 +499,38 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
                   </button>
                 </div>
 
+                {/* Customer Audio References (if provided) */}
+                {(selectedOrder.rhythm_audio_data || selectedOrder.voice_audio_data || selectedOrder.client_audio_notes) && (
+                  <div className="p-4 rounded-2xl bg-[#090a0f] border border-amber-500/30 space-y-3">
+                    <div className="text-xs font-bold text-amber-300 flex items-center gap-2">
+                      <Mic className="w-4 h-4 text-amber-400" />
+                      <span>Referencias de Audio del Cliente:</span>
+                    </div>
+
+                    {selectedOrder.client_audio_notes && (
+                      <p className="text-xs text-slate-300 bg-[#12141e] p-2.5 rounded-xl border border-[#262a40]">
+                        <strong>Nota del cliente:</strong> "{selectedOrder.client_audio_notes}"
+                      </p>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {selectedOrder.rhythm_audio_data && (
+                        <div className="p-3 rounded-xl bg-[#12141e] border border-[#262a40] space-y-1.5">
+                          <span className="text-[11px] font-bold text-slate-300 block">🎵 Referencia Rítmica:</span>
+                          <audio controls src={selectedOrder.rhythm_audio_data} className="w-full h-8" />
+                        </div>
+                      )}
+
+                      {selectedOrder.voice_audio_data && (
+                        <div className="p-3 rounded-xl bg-[#12141e] border border-[#262a40] space-y-1.5">
+                          <span className="text-[11px] font-bold text-slate-300 block">🎤 Referencia Vocal:</span>
+                          <audio controls src={selectedOrder.voice_audio_data} className="w-full h-8" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* 2 Versions Audio URLs Input */}
                 <div className="p-4 rounded-2xl bg-[#090a0f] border border-[#262a40] space-y-3">
                   <div className="text-xs font-bold text-white flex items-center gap-2">
