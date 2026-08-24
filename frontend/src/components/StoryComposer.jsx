@@ -554,14 +554,10 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                 </button>
               </div>
 
-              {/* Tag List — Starts clean with NO pre-configured chips */}
-              <div className="flex flex-wrap gap-2 min-h-[32px] items-center">
-                {formData.key_phrases.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic">
-                    Sin etiquetas preconfiguradas. Agrega arriba los nombres, apodos o frases que quieras que rimen (opcional).
-                  </p>
-                ) : (
-                  formData.key_phrases.map((phrase, idx) => (
+              {/* Tag List */}
+              {formData.key_phrases.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.key_phrases.map((phrase, idx) => (
                     <span
                       key={idx}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium animate-fadeIn"
@@ -575,9 +571,9 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </span>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
