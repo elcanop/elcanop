@@ -1,5 +1,92 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+// Token Management
+export function getAdminToken() {
+  return sessionStorage.getItem('melofilia_admin_token');
+}
+
+export function setAdminToken(token) {
+  if (token) {
+    sessionStorage.setItem('melofilia_admin_token', token);
+  } else {
+    sessionStorage.removeItem('melofilia_admin_token');
+  }
+}
+
+export function getAdminUser() {
+  const user = sessionStorage.getItem('melofilia_admin_user');
+  try {
+    return user ? JSON.parse(user) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function setAdminUser(user) {
+  if (user) {
+    sessionStorage.setItem('melofilia_admin_user', JSON.stringify(user));
+  } else {
+    sessionStorage.removeItem('melofilia_admin_user');
+  }
+}
+
+// 1. Autenticación Real de Admin (Drop It Co)
+export async function loginAdmin(email, password) {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Credenciales inválidas');
+  }
+
+  const data = await res.json();
+  setAdminToken(data.token);
+  setAdminUser(data.user);
+  return data;
+}
+
+export async function verifyAdminSession() {
+  const token = getAdminToken();
+  if (!token) return null;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!res.ok) {
+      logoutAdmin();
+      return null;
+    }
+
+    const data = await res.json();
+    return data.user;
+  } catch (e) {
+    logoutAdmin();
+    return null;
+  }
+}
+
+export function logoutAdmin() {
+  setAdminToken(null);
+  setAdminUser(null);
+}
+
+function getAuthHeaders() {
+  const token = getAdminToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+}
+
+// 2. Endpoints Públicos
 export async function createOrder(orderData) {
   const res = await fetch(`${API_BASE}/api/orders`, {
     method: 'POST',
@@ -53,45 +140,6 @@ export async function getPricingConfig() {
   return res.json();
 }
 
-export async function updatePricingConfig(pricingData) {
-  const res = await fetch(`${API_BASE}/api/admin/pricing`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(pricingData)
-  });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Error al actualizar precios');
-  }
-  return res.json();
-}
-
-export async function getAdminOrders() {
-  const res = await fetch(`${API_BASE}/api/admin/orders`);
-  if (!res.ok) throw new Error('Error al obtener pedidos administrativos');
-  return res.json();
-}
-
-export async function updateAdminOrderStatus(orderId, updateData) {
-  const res = await fetch(`${API_BASE}/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updateData)
-  });
-  if (!res.ok) throw new Error('Error al actualizar estado');
-  return res.json();
-}
-
-export async function simulatePaymentApproval(orderNumber) {
-  const res = await fetch(`${API_BASE}/api/admin/simulate-payment`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ orderNumber })
-  });
-  if (!res.ok) throw new Error('Error al simular pago');
-  return res.json();
-}
-
 export async function sendContactMessage(contactData) {
   const res = await fetch(`${API_BASE}/api/contact`, {
     method: 'POST',
@@ -105,24 +153,94 @@ export async function sendContactMessage(contactData) {
   return res.json();
 }
 
+export async function getPublicReviews() {
+  const res = await fetch(`${API_BASE}/api/reviews/public`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+// 3. Endpoints Protegidos de Admin
+export async function getAdminOrders() {
+  const res = await fetch(`${API_BASE}/api/admin/orders`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al obtener pedidos administrativos');
+  }
+  return res.json();
+}
+
+export async function updateAdminOrderStatus(orderId, updateData) {
+  const res = await fetch(`${API_BASE}/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(updateData)
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al actualizar estado');
+  }
+  return res.json();
+}
+
+export async function updatePricingConfig(pricingData) {
+  const res = await fetch(`${API_BASE}/api/admin/pricing`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(pricingData)
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Error al actualizar precios');
+  }
+  return res.json();
+}
+
 export async function getAdminContactMessages() {
-  const res = await fetch(`${API_BASE}/api/admin/contact`);
-  if (!res.ok) throw new Error('Error al consultar buzón de contacto');
+  const res = await fetch(`${API_BASE}/api/admin/contact`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al consultar buzón de contacto');
+  }
   return res.json();
 }
 
 export async function updateAdminContactMessage(id, updateData) {
   const res = await fetch(`${API_BASE}/api/admin/contact/${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     body: JSON.stringify(updateData)
   });
-  if (!res.ok) throw new Error('Error al actualizar mensaje');
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al actualizar mensaje');
+  }
   return res.json();
 }
 
-export async function getPublicReviews() {
-  const res = await fetch(`${API_BASE}/api/reviews/public`);
-  if (!res.ok) return [];
+export async function getAuditLogs() {
+  const res = await fetch(`${API_BASE}/api/admin/audit-logs`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al obtener registros de auditoría');
+  }
+  return res.json();
+}
+
+export async function simulatePaymentApproval(orderNumber) {
+  const res = await fetch(`${API_BASE}/api/admin/simulate-payment`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ orderNumber })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al simular pago');
+  }
   return res.json();
 }

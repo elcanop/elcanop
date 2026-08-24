@@ -47,10 +47,10 @@ export default function AudioHero({ onStartCreating, onHowItWorks }) {
           {/* Left Column: Value Proposition */}
           <div className="lg:col-span-7 space-y-8 text-center lg:text-left">
             
-            {/* Tag / Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold tracking-wide">
+            {/* Tag / Badge with Drop It Co */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-violet-600/15 border border-amber-500/30 text-amber-300 text-xs font-semibold tracking-wide shadow-sm">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Melofilia · Plataforma de Canciones Personalizadas</span>
+              <span>Melofilia · Una marca del grupo Drop It Co</span>
             </div>
 
             {/* Main Headline strictly from spec */}

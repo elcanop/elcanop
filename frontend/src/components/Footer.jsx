@@ -17,8 +17,12 @@ export default function Footer({ onOpenContact, onNavigate }) {
             </span>
           </div>
           <p className="text-slate-400 max-w-sm text-xs leading-relaxed">
-            Plataforma de producción musical personalizada. Convertimos historias reales, recuerdos y sentimientos en canciones memorables con producción de estudio.
+            Plataforma de producción musical personalizada de alta fidelidad. Convertimos historias reales, recuerdos y sentimientos en canciones memorables de estudio.
           </p>
+          <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-violet-400 bg-violet-500/10 px-2.5 py-1 rounded-md border border-violet-500/20">
+            <Sparkles className="w-3 h-3" />
+            <span>Melofilia es un producto original del grupo Drop It Co</span>
+          </div>
         </div>
 
         {/* Links Col */}
@@ -75,7 +79,7 @@ export default function Footer({ onOpenContact, onNavigate }) {
       {/* Bottom Bar */}
       <div className="max-w-7xl mx-auto pt-6 border-t border-[#181b2a] flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
         <div>
-          © {new Date().getFullYear()} Melofilia. Música hecha a partir de historias que importan.
+          © {new Date().getFullYear()} Drop It Co · Melofilia. Música hecha a partir de historias que importan.
         </div>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1 text-slate-400">

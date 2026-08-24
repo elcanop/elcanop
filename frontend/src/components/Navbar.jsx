@@ -1,13 +1,13 @@
 import React from 'react';
-import { Music, Sparkles, Search, PlusCircle, ShieldCheck, MessageSquare, Headphones } from 'lucide-react';
+import { Music, Sparkles, Search, PlusCircle, ShieldCheck, MessageSquare, Headphones, Lock } from 'lucide-react';
 
-export default function Navbar({ activeTab, setActiveTab, currentOrderNumber, onOpenContact }) {
+export default function Navbar({ activeTab, setActiveTab, currentOrderNumber, onOpenContact, adminUser }) {
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-xl bg-[#090a0f]/80 border-b border-[#262a40] transition-all duration-300">
+    <nav className="sticky top-0 z-50 backdrop-blur-xl bg-[#090a0f]/85 border-b border-[#262a40] transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
-          {/* Logo Melofilia */}
+          {/* Logo Melofilia · Drop It Co */}
           <button 
             onClick={() => setActiveTab('landing')}
             className="flex items-center gap-3 group text-left focus:outline-none"
@@ -20,11 +20,11 @@ export default function Navbar({ activeTab, setActiveTab, currentOrderNumber, on
                 <span className="font-display font-black text-2xl tracking-tight text-white group-hover:text-amber-400 transition-colors">
                   Melofilia
                 </span>
-                <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-md">
-                  Studio
+                <span className="px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded-md">
+                  Drop It Co
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium tracking-wide">Música personalizada</p>
+              <p className="text-[11px] text-slate-400 font-medium tracking-wide">Música personalizada de estudio</p>
             </div>
           </button>
 
@@ -86,10 +86,19 @@ export default function Navbar({ activeTab, setActiveTab, currentOrderNumber, on
                   ? 'bg-violet-600/30 text-violet-300 border-violet-500/50'
                   : 'bg-[#181b2a] text-slate-400 border-[#262a40] hover:text-violet-300 hover:border-violet-500/40'
               }`}
-              title="Consola Administrativa y de Producción"
+              title="Consola Administrativa Segura"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-violet-400" />
-              <span className="hidden sm:inline">Admin</span> Console
+              {adminUser ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span className="hidden sm:inline">Admin</span> ({adminUser.role})
+                </>
+              ) : (
+                <>
+                  <Lock className="w-3.5 h-3.5 text-violet-400" />
+                  <span className="hidden sm:inline">Admin</span> Login
+                </>
+              )}
             </button>
 
             <button

@@ -3,25 +3,28 @@ import {
   ShieldCheck, Music, Check, Copy, AlertCircle, RefreshCw, 
   Play, Square, ChevronRight, Eye, CheckCircle2, Sliders, 
   Send, FileText, UserCheck, Sparkles, CreditCard, Loader2, Tag, 
-  Percent, DollarSign, Save, Mail, MessageSquare, ThumbsUp, Link, Filter
+  Percent, DollarSign, Save, Mail, MessageSquare, ThumbsUp, Link, Filter,
+  LogOut, ShieldAlert, Activity, User
 } from 'lucide-react';
 import { 
   getAdminOrders, updateAdminOrderStatus, simulatePaymentApproval, 
-  getPricingConfig, updatePricingConfig, getAdminContactMessages, updateAdminContactMessage 
+  getPricingConfig, updatePricingConfig, getAdminContactMessages, 
+  updateAdminContactMessage, getAuditLogs 
 } from '../utils/api';
 
-export default function AdminDashboard({ onSelectOrderToView, onPricingUpdated, globalPricing }) {
-  const [role, setRole] = useState('OWNER'); // 'OWNER' | 'PRODUCER'
-  const [adminTab, setAdminTab] = useState('orders'); // 'orders' | 'pricing' | 'inbox'
+export default function AdminDashboard({ currentUser, onLogout, onSelectOrderToView, onPricingUpdated, globalPricing }) {
+  const role = currentUser?.role || 'OWNER';
+  const [adminTab, setAdminTab] = useState('orders'); // 'orders' | 'inbox' | 'pricing' | 'audit'
   const [orders, setOrders] = useState([]);
   const [inboxMessages, setInboxMessages] = useState([]);
+  const [auditLogsList, setAuditLogsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [inboxFilter, setInboxFilter] = useState('ALL');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
-  const [copiedType, setCopiedType] = useState(null); // 'ALL' | 'LYRICS' | 'STYLE' | 'EXCLUSIONS'
+  const [copiedType, setCopiedType] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState(null);
 
@@ -37,13 +40,15 @@ export default function AdminDashboard({ onSelectOrderToView, onPricingUpdated, 
     setLoading(true);
     setError(null);
     try {
-      const [ordersData, inboxData, pricingData] = await Promise.all([
+      const [ordersData, inboxData, pricingData, auditData] = await Promise.all([
         getAdminOrders(),
         getAdminContactMessages().catch(() => ({ messages: [] })),
-        getPricingConfig().catch(() => null)
+        getPricingConfig().catch(() => null),
+        getAuditLogs().catch(() => ({ logs: [] }))
       ]);
       setOrders(ordersData.orders || []);
       setInboxMessages(inboxData.messages || []);
+      setAuditLogsList(auditData.logs || []);
       if (pricingData) setPricingForm(pricingData);
 
       if (selectedOrder) {
@@ -52,6 +57,9 @@ export default function AdminDashboard({ onSelectOrderToView, onPricingUpdated, 
       }
     } catch (err) {
       setError(err.message);
+      if (err.message.includes('Token') || err.message.includes('autorizado')) {
+        if (onLogout) onLogout();
+      }
     } finally {
       setLoading(false);
     }
@@ -67,7 +75,7 @@ export default function AdminDashboard({ onSelectOrderToView, onPricingUpdated, 
     }
   }, [globalPricing]);
 
-  // Production Brief 4 Copy Handlers (Section 16)
+  // Production Brief Copy Handlers
   const handleCopySection = (type, order) => {
     let textToCopy = '';
     
@@ -89,7 +97,6 @@ export default function AdminDashboard({ onSelectOrderToView, onPricingUpdated, 
         `NO USAR: Sonidos sintéticos agresivos, autotune robótico extremo, distorsión heavy metal.\n` +
         `PRONUNCIACIÓN: Respetar nombres propios: ${order.story_details?.recipient_name || ''}.`;
     } else {
-      // COPIAR TODO
       textToCopy = `
 === PRODUCTION BRIEF COMPLETO: MELOFILIA ===
 PEDIDO: ${order.order_number}
@@ -191,10 +198,10 @@ ${order.client_audio_notes || 'Ninguna'}
     : inboxMessages.filter(m => m.status === inboxFilter);
 
   return (
-    <div className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+    <div className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
       
-      {/* Admin Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-3xl bg-[#12141e] border border-[#262a40] shadow-xl">
+      {/* Admin Top Header with Drop It Co Branding & Authenticated User Details */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 rounded-3xl bg-[#12141e] border border-[#262a40] shadow-xl">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-violet-600/20 border border-violet-500/40 flex items-center justify-center">
             <ShieldCheck className="w-6 h-6 text-violet-400" />
@@ -202,74 +209,83 @@ ${order.client_audio_notes || 'Ninguna'}
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-display font-bold text-white">Melofilia Admin Console</h2>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-violet-500/20 text-violet-300 border border-violet-500/30">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                Drop It Co
+              </span>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                role === 'OWNER' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-blue-500/20 text-blue-300'
+              }`}>
                 Rol: {role}
               </span>
             </div>
-            <p className="text-xs text-slate-400">
-              Producción musical, briefs, control de calidad, buzón y precios.
+            <p className="text-xs text-slate-400 mt-0.5">
+              Sesión autenticada: <strong className="text-slate-200">{currentUser?.email || 'admin@melofilia.com'}</strong>
             </p>
           </div>
         </div>
 
-        {/* Navigation Tabs & Role Switcher */}
-        <div className="flex flex-wrap items-center gap-3 self-end sm:self-center">
+        {/* Navigation Tabs & Logout */}
+        <div className="flex flex-wrap items-center gap-2.5 self-stretch md:self-auto justify-between md:justify-end">
           
           {/* Admin Tabs */}
-          <div className="flex bg-[#090a0f] p-1 rounded-xl border border-[#262a40]">
+          <div className="flex bg-[#090a0f] p-1 rounded-xl border border-[#262a40] overflow-x-auto">
             <button
               onClick={() => setAdminTab('orders')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 adminTab === 'orders' ? 'bg-amber-500 text-black shadow-sm' : 'text-slate-400 hover:text-white'
               }`}
             >
-              📦 Bandeja ({orders.length})
+              📦 Pedidos ({orders.length})
             </button>
+
             <button
               onClick={() => setAdminTab('inbox')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
                 adminTab === 'inbox' ? 'bg-amber-500 text-black shadow-sm' : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Mail className="w-3 h-3" /> Buzón ({inboxMessages.filter(m => m.status === 'NEW').length} nuevos)
+              <Mail className="w-3 h-3" /> Buzón ({inboxMessages.filter(m => m.status === 'NEW').length})
             </button>
+
             <button
               onClick={() => setAdminTab('pricing')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
                 adminTab === 'pricing' ? 'bg-amber-500 text-black shadow-sm' : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Tag className="w-3 h-3" /> Precios & Descuentos
+              <Tag className="w-3 h-3" /> Precios
+            </button>
+
+            <button
+              onClick={() => setAdminTab('audit')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                adminTab === 'audit' ? 'bg-amber-500 text-black shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Activity className="w-3 h-3" /> Auditoría
             </button>
           </div>
 
-          {/* Role Switcher */}
-          <div className="flex bg-[#090a0f] p-1 rounded-xl border border-[#262a40]">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setRole('OWNER')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                role === 'OWNER' ? 'bg-violet-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-              }`}
+              onClick={fetchAllAdminData}
+              disabled={loading}
+              className="p-2.5 rounded-xl bg-[#181b2a] hover:bg-[#22273d] text-slate-300 border border-[#262a40] text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              title="Recargar datos"
             >
-              OWNER
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
+
             <button
-              onClick={() => setRole('PRODUCER')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                role === 'PRODUCER' ? 'bg-violet-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-              }`}
+              onClick={onLogout}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold transition-colors"
+              title="Cerrar sesión segura"
             >
-              PRODUCER
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Salir</span>
             </button>
           </div>
 
-          <button
-            onClick={fetchAllAdminData}
-            disabled={loading}
-            className="p-2.5 rounded-xl bg-[#181b2a] hover:bg-[#22273d] text-slate-300 border border-[#262a40] text-xs font-semibold flex items-center gap-1.5 transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
         </div>
       </div>
 
@@ -288,7 +304,7 @@ ${order.client_audio_notes || 'Ninguna'}
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 1: BANDEJA DE PEDIDOS & PRODUCTION BRIEF (SECCIÓN 16, 29)             */}
+      {/* TAB 1: BANDEJA DE PEDIDOS & PRODUCTION BRIEF                             */}
       {/* ========================================================================= */}
       {adminTab === 'orders' && (
         <div className="space-y-8 animate-fadeIn">
@@ -404,7 +420,7 @@ ${order.client_audio_notes || 'Ninguna'}
 
             </div>
 
-            {/* Right Col: Production Brief with 4 Copy Actions (5 cols) */}
+            {/* Right Col: Production Brief (5 cols) */}
             <div className="lg:col-span-5">
               {selectedOrder ? (
                 <div className="sticky top-24 p-6 rounded-3xl bg-[#12141e] border border-[#262a40] space-y-6 shadow-2xl">
@@ -420,7 +436,7 @@ ${order.client_audio_notes || 'Ninguna'}
                     </span>
                   </div>
 
-                  {/* 4 Copy Buttons strictly from Section 16 */}
+                  {/* 4 Copy Buttons */}
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => handleCopySection('LYRICS', selectedOrder)}
@@ -582,7 +598,7 @@ ${order.client_audio_notes || 'Ninguna'}
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: BUZÓN DE CONTACTO (SECCIÓN 30-35)                                  */}
+      {/* TAB 2: BUZÓN DE CONTACTO                                                 */}
       {/* ========================================================================= */}
       {adminTab === 'inbox' && (
         <div className="space-y-6 animate-fadeIn">
@@ -692,7 +708,6 @@ ${order.client_audio_notes || 'Ninguna'}
                     {selectedMessage.message}
                   </div>
 
-                  {/* Review Approval Switch (Section 35) */}
                   {selectedMessage.category === 'REVIEW' && (
                     <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -714,7 +729,6 @@ ${order.client_audio_notes || 'Ninguna'}
                     </div>
                   )}
 
-                  {/* Status & Actions */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-300 block">Cambiar Estado:</label>
                     <div className="flex flex-wrap gap-1.5">
@@ -737,7 +751,7 @@ ${order.client_audio_notes || 'Ninguna'}
                 </div>
               ) : (
                 <div className="p-8 rounded-3xl bg-[#12141e] border border-[#262a40] text-center text-xs text-slate-400">
-                  Selecciona un mensaje del buzón para ver el detalle y gestionar la respuesta.
+                  Selecciona un mensaje del buzón para ver el detalle.
                 </div>
               )}
             </div>
@@ -748,7 +762,7 @@ ${order.client_audio_notes || 'Ninguna'}
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 3: GESTIÓN DE PRECIOS & DESCUENTOS                                    */}
+      {/* TAB 3: GESTIÓN DE PRECIOS & DESCUENTOS (SOLO OWNER)                      */}
       {/* ========================================================================= */}
       {adminTab === 'pricing' && (
         <div className="space-y-8 animate-fadeIn">
@@ -1001,6 +1015,72 @@ ${order.client_audio_notes || 'Ninguna'}
                 </div>
               )}
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: AUDITORÍA DE SEGURIDAD (APPEND-ONLY LOGS)                         */}
+      {/* ========================================================================= */}
+      {adminTab === 'audit' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="p-6 rounded-3xl bg-[#12141e] border border-[#262a40] space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-display font-bold text-white flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-violet-400" />
+                  Registro de Auditoría Inmutable (Append-Only Log)
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Trazabilidad criptográfica de inicios de sesión, cambios de precio, avances de estado y emisiones de tokens.
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-lg bg-violet-500/10 text-violet-300 text-xs font-mono font-bold border border-violet-500/30">
+                {auditLogsList.length} Eventos Registrados
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#262a40] text-slate-400 font-mono">
+                    <th className="py-3 px-4">Fecha / Hora</th>
+                    <th className="py-3 px-4">Evento</th>
+                    <th className="py-3 px-4">Actor</th>
+                    <th className="py-3 px-4">Detalles</th>
+                    <th className="py-3 px-4">IP Origen</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#262a40]/60">
+                  {auditLogsList.map((log) => (
+                    <tr key={log.id} className="hover:bg-[#181b2a]/50 transition-colors">
+                      <td className="py-3 px-4 font-mono text-slate-400 text-[11px] whitespace-nowrap">
+                        {new Date(log.timestamp).toLocaleString('es-CO')}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
+                          log.event_type.includes('FAIL') ? 'bg-rose-500/20 text-rose-300' :
+                          log.event_type.includes('SUCCESS') || log.event_type.includes('PAYMENT') ? 'bg-emerald-500/20 text-emerald-300' :
+                          'bg-amber-500/20 text-amber-300'
+                        }`}>
+                          {log.event_type}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-medium text-white">
+                        {log.actor}
+                      </td>
+                      <td className="py-3 px-4 text-slate-300">
+                        {log.details}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-slate-400 text-[10px]">
+                        {log.ip}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
           </div>
         </div>
       )}

@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import AudioHero from './components/AudioHero';
+import AudioShowcase from './components/AudioShowcase';
 import ComparisonTable from './components/ComparisonTable';
 import HowItWorksAndFaq from './components/HowItWorksAndFaq';
 import StoryComposer from './components/StoryComposer';
 import OrderTracker from './components/OrderTracker';
 import AdminDashboard from './components/AdminDashboard';
+import AdminLogin from './components/AdminLogin';
 import ContactModal from './components/ContactModal';
 import Footer from './components/Footer';
 import { CreditCard, ExternalLink, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
-import { getPricingConfig } from './utils/api';
+import { getPricingConfig, getAdminUser, verifyAdminSession, logoutAdmin } from './utils/api';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('landing');
   const [currentOrderNumber, setCurrentOrderNumber] = useState('MP-2026-000184');
   const [selectedTier, setSelectedTier] = useState('SEMI_PRO');
   const [isContactOpen, setIsContactOpen] = useState(false);
+  const [adminUser, setAdminUser] = useState(() => getAdminUser());
   
   // Pricing configuration loaded dynamically from backend
   const [pricing, setPricing] = useState({
@@ -54,8 +57,8 @@ export default function App() {
   // Banner status
   const [bannerNotice, setBannerNotice] = useState(null);
 
-  // Fetch Pricing on load
-  const loadPricing = async () => {
+  // Fetch Pricing & Verify Admin Session on load
+  const loadInitialData = async () => {
     try {
       const data = await getPricingConfig();
       if (data && data.express) {
@@ -64,10 +67,17 @@ export default function App() {
     } catch (err) {
       console.warn('Using default pricing config:', err);
     }
+
+    try {
+      const verifiedUser = await verifyAdminSession();
+      setAdminUser(verifiedUser);
+    } catch (e) {
+      setAdminUser(null);
+    }
   };
 
   useEffect(() => {
-    loadPricing();
+    loadInitialData();
 
     // Check URL search parameters
     const params = new URLSearchParams(window.location.search);
@@ -133,8 +143,18 @@ export default function App() {
     setPricing(newPricing);
   };
 
+  const handleLoginSuccess = (user) => {
+    setAdminUser(user);
+  };
+
+  const handleLogout = () => {
+    logoutAdmin();
+    setAdminUser(null);
+    setActiveTab('landing');
+  };
+
   return (
-    <div className="min-h-screen bg-[#090a0f] text-slate-100 flex flex-col selection:bg-amber-500 selection:text-black">
+    <div className="min-h-screen bg-[#090a0f] text-slate-100 flex flex-col selection:bg-amber-500 selection:text-black font-sans">
       
       {/* Top Banner Notice */}
       {bannerNotice && (
@@ -154,12 +174,13 @@ export default function App() {
         </div>
       )}
 
-      {/* Navigation */}
+      {/* Navigation with Drop It Co branding & Admin Auth State */}
       <Navbar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         currentOrderNumber={currentOrderNumber} 
         onOpenContact={() => setIsContactOpen(true)}
+        adminUser={adminUser}
       />
 
       {/* Main Content Areas */}
@@ -171,6 +192,9 @@ export default function App() {
             <AudioHero 
               onStartCreating={() => handleStartCreating('SEMI_PRO')} 
               onHowItWorks={handleHowItWorks}
+            />
+            <AudioShowcase 
+              onStartCreatingWithGenre={(genre) => handleStartCreating('SEMI_PRO')}
             />
             <ComparisonTable 
               pricing={pricing}
@@ -200,18 +224,26 @@ export default function App() {
           />
         )}
 
-        {/* VIEW 4: ADMIN CONSOLE */}
+        {/* VIEW 4: ADMIN CONSOLE (Protected with Real Authentication) */}
         {activeTab === 'admin' && (
-          <AdminDashboard 
-            globalPricing={pricing}
-            onPricingUpdated={handlePricingUpdated}
-            onSelectOrderToView={handleSelectOrderToView} 
-          />
+          adminUser ? (
+            <AdminDashboard 
+              currentUser={adminUser}
+              onLogout={handleLogout}
+              globalPricing={pricing}
+              onPricingUpdated={handlePricingUpdated}
+              onSelectOrderToView={handleSelectOrderToView} 
+            />
+          ) : (
+            <AdminLogin 
+              onLoginSuccess={handleLoginSuccess}
+            />
+          )
         )}
 
       </main>
 
-      {/* Contact Inbox Modal (Sections 30-35) */}
+      {/* Contact Inbox Modal */}
       <ContactModal
         isOpen={isContactOpen}
         onClose={() => setIsContactOpen(false)}
