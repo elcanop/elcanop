@@ -34,9 +34,11 @@ const contactLimiter = rateLimit({
   message: { error: 'Límite de mensajes alcanzado temporalmente.' }
 });
 
-// Credenciales Mercado Pago
-const MP_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN || 'APP_USR-2803351916309112-081801-49203340d94970d8bccbecc8819c2a18-3621585263';
-const MP_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY || 'APP_USR-4da66e49-ed48-4662-ade7-bb5ed537e912';
+// Credenciales Mercado Pago (Drop It Co)
+const MP_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN || 'APP_USR-8212980939632377-081801-3847772b11700e66de1416b616acd643-252390597';
+const MP_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY || 'APP_USR-6694a5b8-db1c-43c2-a9cb-7cbebb34dd21';
+const MP_CLIENT_ID = process.env.MERCADO_PAGO_CLIENT_ID || '8212980939632377';
+const MP_CLIENT_SECRET = process.env.MERCADO_PAGO_CLIENT_SECRET || 'v49Y8VkHNwbyuE8oqGIQtEEb4nF1355I';
 const APP_URL = process.env.APP_URL || 'https://melofilia.vercel.app';
 
 // 3. Usuarios Administradores del Sistema (Drop It Co)
