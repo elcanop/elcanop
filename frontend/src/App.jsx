@@ -10,9 +10,14 @@ import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
 import ContactModal from './components/ContactModal';
 import CheckoutSuccess from './components/CheckoutSuccess';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import Terms from './components/Terms';
+import NotFound from './components/NotFound';
+import CookieBanner from './components/CookieBanner';
 import Footer from './components/Footer';
 import { CreditCard, ExternalLink, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { getPricingConfig, getAdminUser, verifyAdminSession, logoutAdmin } from './utils/api';
+import useDocumentTitle from './hooks/useDocumentTitle';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('landing');
@@ -104,6 +109,12 @@ export default function App() {
         setCurrentOrderNumber(externalReference);
         setActiveTab('checkout_success');
       }
+    } else if (path === '/privacy') {
+      setActiveTab('privacy');
+    } else if (path === '/terms') {
+      setActiveTab('terms');
+    } else if (path !== '/' && path !== '/admin' && !orderParam) {
+      setActiveTab('404');
     } else {
       if (paymentStatus === 'approved') {
         setActiveTab('pedido');
@@ -129,8 +140,6 @@ export default function App() {
     setSelectedTier(tier);
     setActiveTab('crear');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const handleHowItWorks = () => {
     setActiveTab('landing');
     setTimeout(() => {
@@ -140,6 +149,24 @@ export default function App() {
       }
     }, 100);
   };
+
+  // -------------------
+  // Dynamic Page Titles
+  // -------------------
+  const getPageTitle = (tab) => {
+    switch(tab) {
+      case 'landing': return 'Melofilia | Música hecha a partir de tus historias';
+      case 'crear': return 'Crear mi Canción | Melofilia';
+      case 'pedido': return 'Seguimiento de Pedido | Melofilia';
+      case 'admin': return 'Panel de Control | Melofilia';
+      case 'checkout_success': return 'Pago Exitoso | Melofilia';
+      case 'privacy': return 'Política de Privacidad | Melofilia';
+      case 'terms': return 'Términos y Condiciones | Melofilia';
+      case '404': return 'Página no encontrada | Melofilia';
+      default: return 'Melofilia';
+    }
+  };
+  useDocumentTitle(getPageTitle(activeTab));
 
   const handleOrderCreated = (orderNumber, checkoutUrl) => {
     setCurrentOrderNumber(orderNumber);
@@ -208,12 +235,21 @@ export default function App() {
       {/* Main Content Areas */}
       <main className="flex-1">
         
+        {activeTab === 'privacy' && <PrivacyPolicy />}
+        {activeTab === 'terms' && <Terms />}
+        {activeTab === '404' && <NotFound />}
+
         {/* VIEW 1: LANDING */}
         {activeTab === 'landing' && (
           <div>
             <AudioHero 
-              onStartCreating={() => handleStartCreating('SEMI_PRO')} 
-              onHowItWorks={handleHowItWorks}
+              onStart={() => handleStartCreating('SEMI_PRO')} 
+              onStartExpress={() => handleStartCreating('EXPRESS')}
+              onTrackOrder={() => {
+                setActiveTab('pedido');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              pricing={pricing}
             />
             <ComparisonTable 
               pricing={pricing}
@@ -274,11 +310,9 @@ export default function App() {
         )}
       </main>
 
-      {/* Contact Inbox Modal */}
-      <ContactModal
-        isOpen={isContactOpen}
-        onClose={() => setIsContactOpen(false)}
-      />
+      {/* Modals and Banners */}
+      <ContactModal isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} defaultOrder={currentOrderNumber} />
+      <CookieBanner />
 
       {/* Mercado Pago Checkout Modal */}
       {checkoutModal.isOpen && (

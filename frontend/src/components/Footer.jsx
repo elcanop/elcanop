@@ -81,7 +81,9 @@ export default function Footer({ onOpenContact, onNavigate }) {
         <div>
           © {new Date().getFullYear()} Drop It Co · Melofilia. Música hecha a partir de historias que importan.
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          <a href="/privacy" className="hover:text-amber-400 transition-colors">Privacidad</a>
+          <a href="/terms" className="hover:text-amber-400 transition-colors">Términos</a>
           <span className="flex items-center gap-1 text-slate-400">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             <span>Mercado Pago SSL 256-bit</span>

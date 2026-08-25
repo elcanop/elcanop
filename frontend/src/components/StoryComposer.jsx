@@ -9,9 +9,9 @@ import confetti from 'canvas-confetti';
 import MicRecorder from 'mic-recorder-to-mp3';
 
 export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated, pricing }) {
-  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [emptyFields, setEmptyFields] = useState([]);
   const [lastSaved, setLastSaved] = useState('Guardado en borrador');
   const [legalAccepted, setLegalAccepted] = useState(false);
 
@@ -249,26 +249,23 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
 
   const handleNext = () => {
     setError(null);
+    setEmptyFields([]);
     if (step === 1) {
-      if (!formData.customer_name.trim()) {
-        setError('Por favor ingresa tu nombre completo para registrar tu pedido.');
-        return;
-      }
-      if (!formData.customer_phone.trim()) {
-        setError('Por favor ingresa tu número de WhatsApp o teléfono para contactarte durante la producción.');
-        return;
-      }
-      if (!formData.customer_email.trim() || !formData.customer_email.includes('@')) {
-        setError('Por favor ingresa un correo electrónico válido para enviarte la letra y los masters.');
-        return;
-      }
-      if (!formData.recipient_name.trim()) {
-        setError('Por favor indica a quién va dedicada la canción.');
+      let missing = [];
+      if (!formData.customer_name.trim()) missing.push('customer_name');
+      if (!formData.customer_phone.trim()) missing.push('customer_phone');
+      if (!formData.customer_email.trim() || !formData.customer_email.includes('@')) missing.push('customer_email');
+      if (!formData.recipient_name.trim()) missing.push('recipient_name');
+      
+      if (missing.length > 0) {
+        setEmptyFields(missing);
+        setError('Por favor completa todos los campos requeridos en rojo.');
         return;
       }
     }
     if (step === 2) {
       if (!formData.key_memories.trim() || formData.key_memories.length < 20) {
+        setEmptyFields(['key_memories']);
         setError('Cuéntanos un poco más de detalles o anécdotas (mínimo 20 caracteres).');
         return;
       }
@@ -421,10 +418,14 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                     type="text"
                     required
                     value={formData.customer_name}
-                    onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, customer_name: e.target.value });
+                      setEmptyFields(prev => prev.filter(f => f !== 'customer_name'));
+                    }}
                     placeholder="Ej: Laura Gómez"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#12141e] border border-[#262a40] text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-xs"
+                    className={`w-full px-3.5 py-2.5 rounded-xl bg-[#12141e] border ${emptyFields.includes('customer_name') ? 'border-rose-500 ring-1 ring-rose-500' : 'border-[#262a40] focus:border-amber-500'} text-white placeholder-slate-500 focus:outline-none text-xs`}
                   />
+                  {emptyFields.includes('customer_name') && <span className="text-[10px] text-rose-400 mt-1 block">Requerido</span>}
                 </div>
 
                 <div>
@@ -435,10 +436,14 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                     type="tel"
                     required
                     value={formData.customer_phone}
-                    onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, customer_phone: e.target.value });
+                      setEmptyFields(prev => prev.filter(f => f !== 'customer_phone'));
+                    }}
                     placeholder="Ej: +57 312 456 7890"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#12141e] border border-[#262a40] text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-xs"
+                    className={`w-full px-3.5 py-2.5 rounded-xl bg-[#12141e] border ${emptyFields.includes('customer_phone') ? 'border-rose-500 ring-1 ring-rose-500' : 'border-[#262a40] focus:border-amber-500'} text-white placeholder-slate-500 focus:outline-none text-xs`}
                   />
+                  {emptyFields.includes('customer_phone') && <span className="text-[10px] text-rose-400 mt-1 block">Requerido</span>}
                 </div>
 
                 <div>
@@ -449,10 +454,14 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
                     type="email"
                     required
                     value={formData.customer_email}
-                    onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
-                    placeholder="laura@ejemplo.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#12141e] border border-[#262a40] text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-xs"
+                    onChange={(e) => {
+                      setFormData({ ...formData, customer_email: e.target.value });
+                      setEmptyFields(prev => prev.filter(f => f !== 'customer_email'));
+                    }}
+                    placeholder="Ej: laura@correo.com"
+                    className={`w-full px-3.5 py-2.5 rounded-xl bg-[#12141e] border ${emptyFields.includes('customer_email') ? 'border-rose-500 ring-1 ring-rose-500' : 'border-[#262a40] focus:border-amber-500'} text-white placeholder-slate-500 focus:outline-none text-xs`}
                   />
+                  {emptyFields.includes('customer_email') && <span className="text-[10px] text-rose-400 mt-1 block">Correo inválido</span>}
                 </div>
               </div>
             </div>
@@ -463,11 +472,16 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
               </label>
               <input
                 type="text"
+                required
                 value={formData.recipient_name}
-                onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
-                placeholder="Ej: A mi esposa Mariana, a mi mamá Luz, o a mi mejor amigo Carlos"
-                className="w-full px-4 py-3 rounded-xl bg-[#090a0f] border border-[#262a40] text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors text-sm"
+                onChange={(e) => {
+                  setFormData({ ...formData, recipient_name: e.target.value });
+                  setEmptyFields(prev => prev.filter(f => f !== 'recipient_name'));
+                }}
+                placeholder="Ej: Mi mamá (Carmen), mi novio (Andrés), para mí, etc."
+                className={`w-full px-4 py-3 rounded-xl bg-[#090a0f] border ${emptyFields.includes('recipient_name') ? 'border-rose-500 ring-1 ring-rose-500' : 'border-[#262a40] focus:border-amber-500'} text-white placeholder-slate-500 focus:outline-none text-sm transition-colors`}
               />
+              {emptyFields.includes('recipient_name') && <span className="text-[10px] text-rose-400 mt-1 block">Requerido</span>}
             </div>
 
             <div>
@@ -527,11 +541,18 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
               </div>
               <textarea
                 rows={6}
+                required
                 value={formData.key_memories}
-                onChange={(e) => setFormData({ ...formData, key_memories: e.target.value })}
-                placeholder="Ej: Nos conocimos en una cafetería en Medellín un día lluvioso. Ella siempre pide capuchino sin azúcar. El viaje a Santa Marta donde nos comprometimos frente al mar..."
-                className="w-full px-4 py-3.5 rounded-xl bg-[#090a0f] border border-[#262a40] text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors text-sm leading-relaxed"
+                onChange={(e) => {
+                  setFormData({ ...formData, key_memories: e.target.value });
+                  if (e.target.value.length >= 20) {
+                    setEmptyFields(prev => prev.filter(f => f !== 'key_memories'));
+                  }
+                }}
+                placeholder="Ej: Nos conocimos en la universidad hace 5 años en una clase aburrida de matemáticas..."
+                className={`w-full px-4 py-3 rounded-xl bg-[#090a0f] border ${emptyFields.includes('key_memories') ? 'border-rose-500 ring-1 ring-rose-500' : 'border-[#262a40] focus:border-amber-500'} text-white placeholder-slate-500 focus:outline-none text-sm transition-colors resize-none`}
               />
+              {emptyFields.includes('key_memories') && <span className="text-[10px] text-rose-400 mt-1 block">Mínimo 20 caracteres</span>}
               
               {/* Contextual Prompts */}
               <div className="p-3.5 rounded-2xl bg-[#090a0f] border border-[#262a40] mt-3 space-y-1 text-xs text-slate-400">
