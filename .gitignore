@@ -10,3 +10,4 @@ backend/server.log
 frontend/frontend.log
 *.pdf
 *.png
+.vercel

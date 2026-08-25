@@ -1,12 +1,42 @@
 <!doctype html>
-<html lang="en">
+<html lang="es" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>Melofilia | Tu Historia Hecha Canción</title>
+    <meta name="description" content="Plataforma de música personalizada. Convertimos tus momentos, emociones y anécdotas en canciones originales e inolvidables." />
+    
+    <!-- OpenGraph & SEO -->
+    <meta property="og:title" content="Melofilia | Tu Historia Hecha Canción" />
+    <meta property="og:description" content="Convertimos tus momentos, emociones y anécdotas en canciones originales e inolvidables. Regala música." />
+    <meta property="og:image" content="https://melofilia.vercel.app/og-image.jpg" />
+    <meta property="og:url" content="https://melofilia.vercel.app/" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Melofilia | Tu Historia Hecha Canción" />
+    <meta name="twitter:description" content="Convertimos tus momentos y anécdotas en canciones originales." />
+    <meta name="twitter:image" content="https://melofilia.vercel.app/og-image.jpg" />
+    
+    <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // Fix for mic-recorder-to-mp3 in Vite (lamejs implicit globals in strict mode)
+      window.global = window;
+      var Lame = window.Lame || {};
+      var Presets = window.Presets || {};
+      var GainAnalysis = window.GainAnalysis || {};
+      var QuantizePVT = window.QuantizePVT || {};
+      var Quantize = window.Quantize || {};
+      var Takehiro = window.Takehiro || {};
+      var Reservoir = window.Reservoir || {};
+      var MPEGMode = window.MPEGMode || {};
+      var BitStream = window.BitStream || {};
+    </script>
   </head>
-  <body>
+  <body class="bg-[#090a0f] text-slate-100 font-['Plus_Jakarta_Sans',sans-serif] antialiased selection:bg-amber-500 selection:text-black">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

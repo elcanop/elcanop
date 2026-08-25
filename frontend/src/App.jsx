@@ -1,35 +1,381 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import Navbar from './components/Navbar';
+import AudioHero from './components/AudioHero';
+import ComparisonTable from './components/ComparisonTable';
+import HowItWorksAndFaq from './components/HowItWorksAndFaq';
+import Reviews from './components/Reviews';
+import StoryComposer from './components/StoryComposer';
+import OrderTracker from './components/OrderTracker';
+import AdminDashboard from './components/AdminDashboard';
+import AdminLogin from './components/AdminLogin';
+import ContactModal from './components/ContactModal';
+import CheckoutSuccess from './components/CheckoutSuccess';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import Terms from './components/Terms';
+import NotFound from './components/NotFound';
+import CookieBanner from './components/CookieBanner';
+import Footer from './components/Footer';
+import { CreditCard, ExternalLink, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { getPricingConfig, getAdminUser, verifyAdminSession, logoutAdmin } from './utils/api';
+import useDocumentTitle from './hooks/useDocumentTitle';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [activeTab, setActiveTab] = useState('landing');
+  const [currentOrderNumber, setCurrentOrderNumber] = useState(() => {
+    return typeof window !== 'undefined' ? (localStorage.getItem('melofilia_last_order') || '') : '';
+  });
+  const [selectedTier, setSelectedTier] = useState('SEMI_PRO');
+  const [isContactOpen, setIsContactOpen] = useState(false);
+  const [adminUser, setAdminUser] = useState(() => getAdminUser());
+  
+  // Pricing configuration loaded dynamically from backend
+  const [pricing, setPricing] = useState({
+    express: {
+      name: 'Express',
+      regular_price: 160000,
+      current_price: 120000,
+      discount_enabled: true,
+      discount_badge: '25% OFF',
+      delivery_hours: 48
+    },
+    semi_pro: {
+      name: 'Semi-Pro',
+      regular_price: 350000,
+      current_price: 280000,
+      discount_enabled: true,
+      discount_badge: '20% OFF',
+      delivery_hours: 48
+    },
+    stems_addon: {
+      name: 'Stems Multipista (ZIP)',
+      regular_price: 70000,
+      current_price: 50000,
+      discount_enabled: true,
+      discount_badge: 'Ahorra $20.000 COP'
+    }
+  });
+
+  // Checkout Modal State
+  const [checkoutModal, setCheckoutModal] = useState({
+    isOpen: false,
+    orderNumber: '',
+    checkoutUrl: ''
+  });
+
+  // Banner status
+  const [bannerNotice, setBannerNotice] = useState(null);
+
+  // Fetch Pricing & Verify Admin Session on load
+  const loadInitialData = async () => {
+    try {
+      const data = await getPricingConfig();
+      if (data && data.express) {
+        setPricing(data);
+      }
+    } catch (err) {
+      console.warn('Using default pricing config:', err);
+    }
+
+    try {
+      const verifiedUser = await verifyAdminSession();
+      setAdminUser(verifiedUser);
+    } catch (e) {
+      setAdminUser(null);
+    }
+  };
+
+  useEffect(() => {
+    loadInitialData();
+
+    // Check URL parameters and Hash
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get('payment_status');
+    const orderParam = params.get('order');
+    const isAdmin = params.get('admin') === 'true' || window.location.hash === '#admin' || window.location.pathname === '/admin';
+
+    if (isAdmin) {
+      setActiveTab('admin');
+    } else if (orderParam) {
+      setCurrentOrderNumber(orderParam);
+      setActiveTab('pedido');
+    }
+
+    // Check routing based on pathname for Mercado Pago redirects
+    const path = window.location.pathname;
+    if (path.startsWith('/checkout/success') || path.startsWith('/checkout/pending') || path.startsWith('/checkout/failure')) {
+      const paymentId = params.get('payment_id');
+      const externalReference = params.get('external_reference');
+      if (externalReference) {
+        setCurrentOrderNumber(externalReference);
+        setActiveTab('checkout_success');
+      }
+    } else if (path === '/privacy') {
+      setActiveTab('privacy');
+    } else if (path === '/terms') {
+      setActiveTab('terms');
+    } else if (path !== '/' && path !== '/admin' && !orderParam) {
+      setActiveTab('404');
+    } else {
+      if (paymentStatus === 'approved') {
+        setActiveTab('pedido');
+      } else if (paymentStatus === 'rejected') {
+        setBannerNotice({
+          type: 'error',
+          text: 'El pago no pudo ser completado. Puedes intentar nuevamente desde tu portal de pedido.'
+        });
+      }
+    }
+
+    // Listen to hash change for hidden admin navigation
+    const handleHashChange = () => {
+      if (window.location.hash === '#admin') {
+        setActiveTab('admin');
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const handleStartCreating = (tier = 'SEMI_PRO') => {
+    setSelectedTier(tier);
+    setActiveTab('crear');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleHowItWorks = () => {
+    setActiveTab('landing');
+    setTimeout(() => {
+      const el = document.getElementById('how-it-works-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  // -------------------
+  // Dynamic Page Titles
+  // -------------------
+  const getPageTitle = (tab) => {
+    switch(tab) {
+      case 'landing': return 'Melofilia | Música hecha a partir de tus historias';
+      case 'crear': return 'Crear mi Canción | Melofilia';
+      case 'pedido': return 'Seguimiento de Pedido | Melofilia';
+      case 'admin': return 'Panel de Control | Melofilia';
+      case 'checkout_success': return 'Pago Exitoso | Melofilia';
+      case 'privacy': return 'Política de Privacidad | Melofilia';
+      case 'terms': return 'Términos y Condiciones | Melofilia';
+      case '404': return 'Página no encontrada | Melofilia';
+      default: return 'Melofilia';
+    }
+  };
+  useDocumentTitle(getPageTitle(activeTab));
+
+  const handleOrderCreated = (orderNumber, checkoutUrl) => {
+    setCurrentOrderNumber(orderNumber);
+    if (checkoutUrl) {
+      setCheckoutModal({
+        isOpen: true,
+        orderNumber,
+        checkoutUrl
+      });
+    } else {
+      setActiveTab('pedido');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleSelectOrderToView = (orderNumber) => {
+    setCurrentOrderNumber(orderNumber);
+    setActiveTab('pedido');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePricingUpdated = (newPricing) => {
+    setPricing(newPricing);
+  };
+
+  const handleLoginSuccess = (user) => {
+    setAdminUser(user);
+  };
+
+  const handleLogout = () => {
+    logoutAdmin();
+    setAdminUser(null);
+    setActiveTab('landing');
+    window.location.hash = '';
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div className="min-h-screen bg-[#090a0f] text-slate-100 flex flex-col selection:bg-amber-500 selection:text-black font-sans">
+      
+      {/* Top Banner Notice */}
+      {bannerNotice && (
+        <div className={`py-3 px-4 text-center text-xs font-semibold flex items-center justify-center gap-2 ${
+          bannerNotice.type === 'success' 
+            ? 'bg-emerald-500/20 text-emerald-300 border-b border-emerald-500/40' 
+            : 'bg-rose-500/20 text-rose-300 border-b border-rose-500/40'
+        }`}>
+          {bannerNotice.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span>{bannerNotice.text}</span>
+          <button 
+            onClick={() => setBannerNotice(null)} 
+            className="ml-4 underline hover:opacity-80 text-[11px]"
+          >
+            Cerrar
+          </button>
+        </div>
+      )}
 
-export default App
+      {/* Navigation (Clean Customer View without Admin Button) */}
+      <Navbar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        currentOrderNumber={currentOrderNumber} 
+        onOpenContact={() => setIsContactOpen(true)}
+      />
+
+      {/* Main Content Areas */}
+      <main className="flex-1">
+        
+        {activeTab === 'privacy' && <PrivacyPolicy />}
+        {activeTab === 'terms' && <Terms />}
+        {activeTab === '404' && <NotFound />}
+
+        {/* VIEW 1: LANDING */}
+        {activeTab === 'landing' && (
+          <div>
+            <AudioHero 
+              onStart={() => handleStartCreating('SEMI_PRO')} 
+              onStartExpress={() => handleStartCreating('EXPRESS')}
+              onTrackOrder={() => {
+                setActiveTab('pedido');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              pricing={pricing}
+            />
+            <ComparisonTable 
+              pricing={pricing}
+              onSelectTier={(tier) => handleStartCreating(tier)} 
+            />
+            <Reviews />
+            <div id="how-it-works-section">
+              <HowItWorksAndFaq 
+                onStartCreating={() => handleStartCreating('SEMI_PRO')} 
+              />
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 2: SONG CREATOR */}
+        {activeTab === 'crear' && (
+          <StoryComposer 
+            pricing={pricing}
+            initialTier={selectedTier} 
+            onOrderCreated={handleOrderCreated} 
+          />
+        )}
+
+        {/* VIEW 3: ORDER TRACKER & LYRICS APPROVAL */}
+        {activeTab === 'pedido' && (
+          <OrderTracker 
+            initialOrderNumber={currentOrderNumber} 
+          />
+        )}
+
+        {/* VIEW 4: ADMIN CONSOLE (Protected with Real JWT Authentication & Unified UI) */}
+        {activeTab === 'admin' && (
+          adminUser ? (
+            <AdminDashboard 
+              currentUser={adminUser}
+              onLogout={handleLogout}
+              globalPricing={pricing}
+              onPricingUpdated={handlePricingUpdated}
+              onSelectOrderToView={handleSelectOrderToView} 
+            />
+          ) : (
+            <AdminLogin 
+              onLoginSuccess={handleLoginSuccess}
+            />
+          )
+        )}
+
+        {/* VIEW 5: POST-PAYMENT SUCCESS SCREEN */}
+        {activeTab === 'checkout_success' && (
+          <CheckoutSuccess 
+            orderNumber={currentOrderNumber}
+            paymentId={new URLSearchParams(window.location.search).get('payment_id')}
+            onGoToOrder={(orderNum) => {
+              window.history.replaceState({}, '', '/');
+              handleSelectOrderToView(orderNum);
+            }}
+          />
+        )}
+      </main>
+
+      {/* Modals and Banners */}
+      <ContactModal isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} defaultOrder={currentOrderNumber} />
+      <CookieBanner />
+
+      {/* Mercado Pago Checkout Modal */}
+      {checkoutModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#12141e] border-2 border-amber-500/80 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6">
+            
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
+                <CreditCard className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-lg text-white">Orden Creada con Éxito</h3>
+                <p className="text-xs font-mono text-amber-400">{checkoutModal.orderNumber}</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#090a0f] border border-[#262a40] text-xs space-y-2 text-slate-300">
+              <div className="font-bold text-white flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                Pago Seguro con Mercado Pago (Colombia)
+              </div>
+              <p className="text-slate-400 leading-relaxed">
+                Tu pedido ha sido registrado. Incluye revisión previa de letra y entrega de 2 versiones de tu canción.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <a
+                href={checkoutModal.checkoutUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-sm shadow-xl shadow-amber-500/25 active:scale-95 transition-all"
+              >
+                <span>Ir al Checkout de Mercado Pago</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCheckoutModal({ isOpen: false, orderNumber: '', checkoutUrl: '' });
+                  setActiveTab('pedido');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="w-full py-3 px-4 rounded-xl bg-[#181b2a] hover:bg-[#202438] text-slate-300 border border-[#262a40] text-xs font-semibold transition-colors"
+              >
+                Continuar al Portal de Mi Pedido
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <Footer 
+        onOpenContact={() => setIsContactOpen(true)}
+        onNavigate={(tab) => {
+          setActiveTab(tab);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }} 
+      />
+
+    </div>
+  );
+}
