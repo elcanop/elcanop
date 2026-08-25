@@ -115,7 +115,7 @@ export async function reviewLyrics(orderNumber, action, feedback) {
   const res = await fetch(`${API_BASE}/api/orders/${encodeURIComponent(orderNumber)}/review-lyrics`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, feedback })
+    body: JSON.stringify({ approved: action === 'APPROVE', feedback })
   });
   if (!res.ok) {
     const error = await res.json();
