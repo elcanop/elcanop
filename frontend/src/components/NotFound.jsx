@@ -14,8 +14,8 @@ export default function NotFound() {
       </div>
       <h1 className="text-6xl font-bold text-white mb-4">404</h1>
       <p className="text-2xl text-slate-300 mb-8 max-w-md">Lo sentimos, parece que esta melodía se ha perdido en el espacio.</p>
-      <Link 
-        to="/" 
+      <a 
+        href="/" 
         className="px-8 py-4 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-lg transition-all transform hover:scale-105"
       >
         Volver al Inicio

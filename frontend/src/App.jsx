@@ -140,6 +140,8 @@ export default function App() {
     setSelectedTier(tier);
     setActiveTab('crear');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleHowItWorks = () => {
     setActiveTab('landing');
     setTimeout(() => {
