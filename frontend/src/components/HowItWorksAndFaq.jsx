@@ -26,7 +26,7 @@ export default function HowItWorksAndFaq({ onStartCreating }) {
     {
       icon: <Clock className="w-6 h-6 text-amber-400" />,
       number: '04',
-      title: 'Entrega en máx. 48h (desde 3h)',
+      title: 'Entrega en máx. 24h (desde 3h)',
       description: 'Recibes tus dos canciones terminadas en audio master (MP3/WAV), letra PDF y bóveda de descargas por 7 días.'
     }
   ];
@@ -42,7 +42,7 @@ export default function HowItWorksAndFaq({ onStartCreating }) {
     },
     {
       q: '¿Cuánto tiempo tarda la entrega?',
-      a: 'El plazo estándar es de máximo 48 horas tras la aprobación de la letra. En caso de requerir una entrega urgente para un evento o cumpleaños del mismo día, contamos con opción de entrega express desde 3 horas mínimo.'
+      a: 'El plazo estándar es de máximo 24 horas tras la aprobación de la letra. En caso de requerir una entrega urgente para un evento o cumpleaños del mismo día, contamos con opción de entrega express desde 3 horas mínimo.'
     },
     {
       q: '¿Qué incluye la garantía de corrección adicional sobre el audio?',

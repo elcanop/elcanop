@@ -7,7 +7,7 @@ export default function ComparisonTable({ onSelectTier, pricing }) {
     current_price: 120000,
     discount_enabled: true,
     discount_badge: '25% OFF',
-    delivery_hours: 48
+    delivery_hours: 24
   };
 
   const semiPro = pricing?.semi_pro || {
@@ -15,7 +15,7 @@ export default function ComparisonTable({ onSelectTier, pricing }) {
     current_price: 280000,
     discount_enabled: true,
     discount_badge: '20% OFF',
-    delivery_hours: 48
+    delivery_hours: 24
   };
 
   return (
@@ -32,7 +32,7 @@ export default function ComparisonTable({ onSelectTier, pricing }) {
             Elige el formato perfecto para tu historia
           </h2>
           <p className="text-slate-300 text-base leading-relaxed">
-            Sin suscripciones ni letras chicas. Ambos planes incluyen <strong>revisión previa de letra</strong>, entrega de <strong>2 canciones terminadas</strong> y plazo de entrega en <strong>máximo 48 horas</strong> (desde 3h express).
+            Sin suscripciones ni letras chicas. Ambos planes incluyen <strong>revisión previa de letra</strong>, entrega de <strong>2 canciones terminadas</strong> y plazo de entrega en <strong>máximo 24 horas</strong> (desde 3h express).
           </p>
         </div>
 
@@ -47,7 +47,7 @@ export default function ComparisonTable({ onSelectTier, pricing }) {
                   Opción Ágil
                 </span>
                 <span className="flex items-center gap-1 text-xs text-amber-400 font-semibold">
-                  <Clock className="w-3.5 h-3.5" /> Máx. 48h (desde 3h)
+                  <Clock className="w-3.5 h-3.5" /> Máx. 24h (desde 3h)
                 </span>
               </div>
 
@@ -141,7 +141,7 @@ export default function ComparisonTable({ onSelectTier, pricing }) {
                   Producción de Estudio
                 </span>
                 <span className="flex items-center gap-1 text-xs text-amber-400 font-semibold">
-                  <Clock className="w-3.5 h-3.5" /> Máx. 48h (desde 3h)
+                  <Clock className="w-3.5 h-3.5" /> Máx. 24h (desde 3h)
                 </span>
               </div>
 

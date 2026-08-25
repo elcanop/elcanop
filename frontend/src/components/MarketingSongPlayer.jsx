@@ -21,7 +21,7 @@ creamos tu canción de forma sentida.
 Cuéntanos tu historia, te enviamos la letra hoy,
 tú la revisas y apruebas con emoción.
 Te entregamos dos versiones para que elijas tu voz,
-en 48 horas sonando en tu corazón.
+en 24 horas sonando en tu corazón.
 
 [Verso 2]
 Desde tres horas si tienes urgencia especial,
@@ -44,7 +44,7 @@ la ajustamos contigo, somos tu equipo sincero.
 [Coro]
 ¡Dos versiones de tu tema para bailar y cantar!
 Revisa tu letra y prepárate a vibrar.
-Máximo en 48 horas tu historia va a sonar,
+Máximo en 24 horas tu historia va a sonar,
 Melofilia en la pista te va a enamorar.`
     },
     {
@@ -61,7 +61,7 @@ aprobamos la letra y los beats llegarán.
 
 [Coro]
 Dos canciones casi iguales para que elijas la mejor,
-máximo en 48 horas o en 3 con calor.
+máximo en 24 horas o en 3 con calor.
 Tu historia suena a radio, calidad superior,
 Melofilia Studio rompiendo el altavoz.`
     },
@@ -80,7 +80,7 @@ hacemos los versos de tu gran canción.
 [Coro]
 Te paso la letra pa que des el sí,
 te entrego dos temas sabrosos pa ti.
-En 48 horas o en 3 si es de afán,
+En 24 horas o en 3 si es de afán,
 con Melofilia los versos nunca morirán.`
     },
     {
@@ -98,7 +98,7 @@ dos versiones de estudio para recordar.
 [Coro]
 Melofilia suena con fuerza y pasión,
 tu historia en acorde, tu propia canción.
-Máximo en 48 horas master final,
+Máximo en 24 horas master final,
 un regalo que nadie podrá igualar.`
     }
   ]);
@@ -202,7 +202,7 @@ un regalo que nadie podrá igualar.`
         </div>
         <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[#090a0f] border border-[#262a40]">
           <Clock className="w-4 h-4 text-violet-400 shrink-0" />
-          <span className="text-xs font-semibold text-slate-200">3. Entrega máx. 48h (desde 3h express)</span>
+          <span className="text-xs font-semibold text-slate-200">3. Entrega máx. 24h (desde 3h express)</span>
         </div>
       </div>
 

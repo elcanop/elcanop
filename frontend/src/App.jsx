@@ -36,7 +36,7 @@ export default function App() {
       current_price: 120000,
       discount_enabled: true,
       discount_badge: '25% OFF',
-      delivery_hours: 48
+      delivery_hours: 24
     },
     semi_pro: {
       name: 'Semi-Pro',
@@ -44,7 +44,7 @@ export default function App() {
       current_price: 280000,
       discount_enabled: true,
       discount_badge: '20% OFF',
-      delivery_hours: 48
+      delivery_hours: 24
     },
     stems_addon: {
       name: 'Stems Multipista (ZIP)',

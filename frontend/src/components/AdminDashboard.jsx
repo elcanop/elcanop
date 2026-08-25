@@ -101,7 +101,7 @@ export default function AdminDashboard({ currentUser, onLogout, onSelectOrderToV
       textToCopy = `=== STYLE PROMPT: ${order.order_number} ===\n` +
         `GÉNERO: ${order.genre}\n` +
         `MOOD: ${order.mood}\n` +
-        `TIEMPO ENTREGA: Máx 48h (posibilidad 3h express)\n` +
+        `TIEMPO ENTREGA: Máx 24h (posibilidad 3h express)\n` +
         `ENTREGABLE: 2 Canciones casi iguales (Versión A y Versión B)\n` +
         `BPM SUGERIDO: 85-115 | TONALIDAD: Mayor cálida`;
     } else if (type === 'EXCLUSIONS') {

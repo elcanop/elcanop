@@ -272,7 +272,7 @@ export default function OrderTracker({ initialOrderNumber = '' }) {
                   {order.order_status?.replace(/_/g, ' ')}
                 </span>
                 <div className="text-xs text-slate-400 mt-1">
-                  Entrega en máx. 48h (desde 3h express)
+                  Entrega en máx. 24h (desde 3h express)
                 </div>
               </div>
             </div>

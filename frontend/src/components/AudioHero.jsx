@@ -2,7 +2,7 @@ import React from 'react';
 import { Sparkles, CheckCircle2, ArrowRight, HelpCircle, Music2, Clock, FileText } from 'lucide-react';
 import MarketingSongPlayer from './MarketingSongPlayer';
 
-export default function AudioHero({ onStartCreating, onHowItWorks }) {
+export default function AudioHero({ onStart, onHowItWorks }) {
   return (
     <div className="relative overflow-hidden pt-8 pb-16 lg:pt-12 lg:pb-24">
       {/* Ambient background glows */}
@@ -30,13 +30,13 @@ export default function AudioHero({ onStartCreating, onHowItWorks }) {
 
           {/* Subtitle with exact new service rules */}
           <p className="text-base sm:text-lg text-slate-300 font-normal leading-relaxed max-w-3xl mx-auto">
-            Convertimos tus recuerdos, aniversarios, amores y celebraciones en música de estudio. <strong>Revisas y apruebas la letra</strong> antes de producir, <strong>recibes 2 canciones terminadas</strong> para elegir tu favorita y la tienes lista en <strong>máximo 48 horas</strong> (¡con entregas express desde 3 horas!).
+            Convertimos tus recuerdos, aniversarios, amores y celebraciones en música de estudio. <strong>Revisas y apruebas la letra</strong> antes de producir, <strong>recibes 2 canciones terminadas</strong> para elegir tu favorita y la tienes lista en <strong>máximo 24 horas</strong> (¡con entregas express desde 3 horas!).
           </p>
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
             <button
-              onClick={onStartCreating}
+              onClick={onStart}
               className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-base shadow-xl shadow-amber-500/25 active:scale-95 transition-all"
             >
               <span>CREAR MI CANCIÓN</span>
@@ -44,7 +44,10 @@ export default function AudioHero({ onStartCreating, onHowItWorks }) {
             </button>
 
             <button
-              onClick={onHowItWorks}
+              onClick={() => {
+                const el = document.getElementById('how-it-works');
+                if(el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
               className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl bg-[#181b2a] hover:bg-[#202438] text-slate-200 border border-[#262a40] font-semibold text-sm transition-all"
             >
               <HelpCircle className="w-4 h-4 text-amber-400" />
@@ -56,7 +59,7 @@ export default function AudioHero({ onStartCreating, onHowItWorks }) {
 
         {/* Marketing Song Player: Listen to the explanatory song in multiple styles */}
         <div className="max-w-4xl mx-auto">
-          <MarketingSongPlayer onStartCreating={onStartCreating} />
+          <MarketingSongPlayer onStartCreating={onStart} />
         </div>
 
       </div>

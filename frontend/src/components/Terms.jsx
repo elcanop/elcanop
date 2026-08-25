@@ -22,7 +22,7 @@ export default function Terms() {
           <section>
             <h2 className="text-2xl font-semibold mb-2 text-white">2. Proceso de Creación y Entregas</h2>
             <ul className="list-disc pl-6 mt-2 space-y-1">
-              <li>El tiempo de entrega estimado es de 48 horas tras la confirmación del pago, sujeto a la complejidad del pedido y demanda actual.</li>
+              <li>El tiempo de entrega estimado es de 24 horas tras la confirmación del pago, sujeto a la complejidad del pedido y demanda actual.</li>
               <li>Se presentarán dos (2) versiones o propuestas iniciales para que el cliente elija la que más se acerque a su visión.</li>
               <li>El cliente tiene derecho a una (1) ronda de correcciones gratuitas sobre la propuesta elegida (corrección de música o letra).</li>
               <li>Una vez aceptada la entrega final, la orden se considerará Completada.</li>
