@@ -151,13 +151,13 @@ export async function reviewDelivery(orderNumber, payload) {
 }
 
 export async function getPricingConfig() {
-  const res = await fetch(`${API_BASE}/api/config/pricing`);
+  const res = await fetch(`${API_BASE}/api/pricing`);
   if (!res.ok) throw new Error('Error al obtener configuración de precios');
   return res.json();
 }
 
 export async function getMarketingSongs() {
-  const res = await fetch(`${API_BASE}/api/config/marketing-songs`);
+  const res = await fetch(`${API_BASE}/api/marketing-styles`);
   if (!res.ok) throw new Error('Error al obtener canciones de marketing');
   return res.json();
 }
@@ -176,7 +176,7 @@ export async function sendContactMessage(contactData) {
 }
 
 export async function getPublicReviews() {
-  const res = await fetch(`${API_BASE}/api/reviews/public`);
+  const res = await fetch(`${API_BASE}/api/reviews`);
   if (!res.ok) return [];
   return res.json();
 }
@@ -233,8 +233,8 @@ export async function updateAdminOrderStatus(orderId, updateData) {
 }
 
 export async function updateMarketingSongs(styles) {
-  const res = await fetch(`${API_BASE}/api/admin/marketing-songs`, {
-    method: 'PUT',
+  const res = await fetch(`${API_BASE}/api/admin/marketing-styles`, {
+    method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify({ styles })
   });
@@ -247,7 +247,7 @@ export async function updateMarketingSongs(styles) {
 
 export async function updatePricingConfig(pricingData) {
   const res = await fetch(`${API_BASE}/api/admin/pricing`, {
-    method: 'PUT',
+    method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(pricingData)
   });
@@ -259,7 +259,7 @@ export async function updatePricingConfig(pricingData) {
 }
 
 export async function getAdminContactMessages() {
-  const res = await fetch(`${API_BASE}/api/admin/contact`, {
+  const res = await fetch(`${API_BASE}/api/admin/contact-messages`, {
     headers: getAuthHeaders()
   });
   if (!res.ok) {
@@ -270,7 +270,7 @@ export async function getAdminContactMessages() {
 }
 
 export async function updateAdminContactMessage(id, updateData) {
-  const res = await fetch(`${API_BASE}/api/admin/contact/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${API_BASE}/api/admin/contact-messages/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(updateData)
