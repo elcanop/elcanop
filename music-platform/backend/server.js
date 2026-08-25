@@ -1,19 +1,18 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-const dotenv = require('dotenv');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-
-// Cargar variables de entorno desde la raíz del proyecto
-dotenv.config({ path: path.join(__dirname, '../../.env') });
-dotenv.config();
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'melofilia_drop_it_co_secure_jwt_secret_2026_x89a';
+
+// Configurar Supabase
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // 1. Seguridad Básica: Helmet & CORS
 app.use(helmet({
@@ -22,33 +21,30 @@ app.use(helmet({
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '5mb' }));
 
-// 2. Limitadores de Tasa (Rate Limiting)
+// 2. Limitadores de Tasa
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 10,
+  windowMs: 15 * 60 * 1000,
+  max: 20,
   message: { error: 'Demasiados intentos de autenticación. Intenta nuevamente en 15 minutos.' }
 });
 
 const ordersLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 40,
+  max: 50,
   message: { error: 'Límite de pedidos alcanzado temporalmente por seguridad.' }
 });
 
 const contactLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 30,
+  max: 40,
   message: { error: 'Límite de mensajes alcanzado temporalmente.' }
 });
 
-// Credenciales Mercado Pago (Drop It Co)
+// Credenciales Mercado Pago
 const MP_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN || 'APP_USR-8212980939632377-081801-3847772b11700e66de1416b616acd643-252390597';
-const MP_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY || 'APP_USR-6694a5b8-db1c-43c2-a9cb-7cbebb34dd21';
-const MP_CLIENT_ID = process.env.MERCADO_PAGO_CLIENT_ID || '8212980939632377';
-const MP_CLIENT_SECRET = process.env.MERCADO_PAGO_CLIENT_SECRET || 'v49Y8VkHNwbyuE8oqGIQtEEb4nF1355I';
 const APP_URL = process.env.APP_URL || 'https://melofilia.vercel.app';
 
-// 3. Usuario Administrador del Sistema (Drop It Co)
+// 3. Usuario Administrador
 const adminUsers = [
   {
     id: 'usr_owner_01',
@@ -59,44 +55,26 @@ const adminUsers = [
   }
 ];
 
-// 4. Registro de Auditoría Inmutable (Append-Only Audit Log)
-const auditLogs = [
-  {
-    id: 'aud_init_01',
-    timestamp: new Date().toISOString(),
-    event_type: 'SYSTEM_STARTUP',
-    actor: 'SYSTEM',
-    details: 'Melofilia Secure API iniciada bajo el grupo Drop It Co',
-    ip: '127.0.0.1'
-  }
-];
-
-function logAuditEvent(eventType, actor, details, req) {
+async function logAuditEvent(eventType, actor, details, req) {
   const ip = req ? (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1') : 'SYSTEM';
-  const entry = {
-    id: `aud_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-    timestamp: new Date().toISOString(),
+  await supabase.from('audit_logs').insert([{
     event_type: eventType,
     actor,
     details,
     ip
-  };
-  auditLogs.unshift(entry);
-  if (auditLogs.length > 500) auditLogs.pop();
+  }]);
 }
 
-// 5. Middlewares de Autenticación y Autorización
+// 5. Middlewares de Autenticación
 function authenticateJWT(req, res, next) {
   const authHeader = req.headers['authorization'];
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Acceso no autorizado: Token de autenticación requerido.' });
+    return res.status(401).json({ error: 'Acceso no autorizado: Token requerido.' });
   }
 
   const token = authHeader.split(' ')[1];
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Token inválido o expirado. Por favor inicia sesión nuevamente.' });
-    }
+    if (err) return res.status(403).json({ error: 'Token inválido o expirado.' });
     req.user = user;
     next();
   });
@@ -105,711 +83,385 @@ function authenticateJWT(req, res, next) {
 function requireRole(allowedRoles = ['OWNER']) {
   return (req, res, next) => {
     if (!req.user || !allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ 
-        error: `Permisos insuficientes. Esta acción requiere rol: ${allowedRoles.join(', ')}.` 
-      });
+      return res.status(403).json({ error: 'Permisos insuficientes.' });
     }
     next();
   };
 }
 
-// 6. Configuración de la Canción de Marketing Multi-Estilo (Administrable)
-let marketingSongStyles = [
-  {
-    id: 'balada',
-    name: 'Balada Pop Acústica',
-    tagline: 'Emotiva, íntima y profunda',
-    tempo: '85 BPM',
-    audio_url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=acoustic-guitars-ambient-112347.mp3',
-    lyrics: `[Verso 1]
-Tienes una historia que merece ser cantada,
-un recuerdo, un amor, una vida compartida.
-En Melofilia no usamos fórmulas armadas,
-creamos tu canción de forma sentida.
-
-[Coro]
-Cuéntanos tu historia, te enviamos la letra hoy,
-tú la revisas y apruebas con emoción.
-Te entregamos dos versiones para que elijas tu voz,
-en 48 horas sonando en tu corazón.
-
-[Verso 2]
-Desde tres horas si tienes urgencia especial,
-con calidad de estudio y master profesional.
-Tu historia en melodía se vuelve inmortal,
-¡Melofilia es tu música real!`
-  },
-  {
-    id: 'pop',
-    name: 'Pop Latino Moderno',
-    tagline: 'Alegre, brillante y pegajosa',
-    tempo: '115 BPM',
-    audio_url: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=tropical-house-summer-pop-10338.mp3',
-    lyrics: `[Verso 1]
-¡Hey! Cuéntanos tu momento especial,
-un cumpleaños, aniversario o detalle sin igual.
-Escribimos la letra para que la leas primero,
-la ajustamos contigo, somos tu equipo sincero.
-
-[Coro]
-¡Dos versiones de tu tema para bailar y cantar!
-Revisa tu letra y prepárate a vibrar.
-Máximo en 48 horas tu historia va a sonar,
-Melofilia en la pista te va a enamorar.`
-  },
-  {
-    id: 'urbano',
-    name: 'Urbano / Reggaetón Flow',
-    tagline: 'Ritmo moderno, bajo potente y fresco',
-    tempo: '96 BPM',
-    audio_url: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8b18721c4.mp3?filename=reggaeton-beat-10982.mp3',
-    lyrics: `[Verso 1]
-De la historia a la pista, sin filtro y con flow,
-Melofilia en la casa armándote el show.
-Escribimos las rimas, revisas el plan,
-aprobamos la letra y los beats llegarán.
-
-[Coro]
-Dos canciones casi iguales para que elijas la mejor,
-máximo en 48 horas o en 3 con calor.
-Tu historia suena a radio, calidad superior,
-Melofilia Studio rompiendo el altavoz.`
-  },
-  {
-    id: 'vallenato',
-    name: 'Vallenato Romántico',
-    tagline: 'Sentimiento puro, acordeón y tradición',
-    tempo: '90 BPM',
-    audio_url: 'https://cdn.pixabay.com/download/audio/2022/11/06/audio_2c52670e30.mp3?filename=latin-acoustic-groove-125488.mp3',
-    lyrics: `[Verso 1]
-Ay, mi gente querida, les vengo a contar,
-que cualquier recuerdo se puede cantar.
-Nos das tu relato y con devoción,
-hacemos los versos de tu gran canción.
-
-[Coro]
-Te paso la letra pa que des el sí,
-te entrego dos temas sabrosos pa ti.
-En 48 horas o en 3 si es de afán,
-con Melofilia los versos nunca morirán.`
-  },
-  {
-    id: 'rock',
-    name: 'Rock Acústico Orgánico',
-    tagline: 'Guitarras potentes, orgánico y auténtico',
-    tempo: '120 BPM',
-    audio_url: 'https://cdn.pixabay.com/download/audio/2022/08/02/audio_884fe92c21.mp3?filename=indie-folk-acoustic-117517.mp3',
-    lyrics: `[Verso 1]
-La guitarra marca el pulso de la verdad,
-convertimos anécdotas en eternidad.
-Lees la letra antes de empezar a grabar,
-dos versiones de estudio para recordar.
-
-[Coro]
-Melofilia suena con fuerza y pasión,
-tu historia en acorde, tu propia canción.
-Máximo en 48 horas master final,
-un regalo que nadie podrá igualar.`
-  }
-];
-
-// 7. Configuración de Precios y Descuentos
-let pricingConfig = {
-  express: {
-    name: 'Express',
-    regular_price: 160000,
-    current_price: 120000,
-    discount_enabled: true,
-    discount_badge: '25% OFF',
-    delivery_hours: 48,
-    format: '2 Canciones (Versión A y B) + Revisión de Letra + MP3 + PDF',
-    description: 'Entrega estándar en 48h (posibilidad express desde 3h). 2 canciones casi iguales para elegir.'
-  },
-  semi_pro: {
-    name: 'Semi-Pro',
-    regular_price: 350000,
-    current_price: 280000,
-    discount_enabled: true,
-    discount_badge: '20% OFF',
-    delivery_hours: 48,
-    format: '2 Canciones en MP3 + WAV Studio (24-bit) + Revisión de Letra + Carátula Digital + PDF',
-    description: 'Máxima fidelidad acústica multicapa, 2 versiones completas y opción de stems.'
-  },
-  stems_addon: {
-    name: 'Stems Multipista (STEMS.ZIP)',
-    regular_price: 70000,
-    current_price: 50000,
-    discount_enabled: true,
-    discount_badge: 'Ahorra $20.000 COP',
-    description: 'Pistas individuales por separado en archivo ZIP (Voz, Batería, Bajo, Guitarras, Teclados).'
-  }
-};
-
-// 8. Almacén de Órdenes en Memoria (Inicia limpio — solo pedidos reales)
-const orders = [];
-
-// Almacén de Contacto (Inicia limpio)
-const contactMessages = [];
-
 // ==========================================
-// 9. ENDPOINTS DE AUTENTICACIÓN ADMIN
-// ==========================================
-
-app.post('/api/auth/login', authLimiter, (req, res) => {
-  const { usuario, password } = req.body;
-  if (!usuario || !password) {
-    return res.status(400).json({ error: 'Usuario y contraseña requeridos.' });
-  }
-
-  const user = adminUsers.find(u => u.usuario === usuario.trim());
-  if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
-    logAuditEvent('LOGIN_FAILED', usuario, 'Intento fallido de inicio de sesión', req);
-    return res.status(401).json({ error: 'Credenciales inválidas. Verifica tu usuario y contraseña.' });
-  }
-
-  const token = jwt.sign(
-    { id: user.id, usuario: user.usuario, name: user.name, role: user.role },
-    JWT_SECRET,
-    { expiresIn: '8h' }
-  );
-
-  logAuditEvent('LOGIN_SUCCESS', user.usuario, `Inicio de sesión exitoso con rol ${user.role}`, req);
-
-  res.json({
-    success: true,
-    token,
-    user: { id: user.id, usuario: user.usuario, name: user.name, role: user.role }
-  });
-});
-
-app.get('/api/auth/me', authenticateJWT, (req, res) => {
-  res.json({
-    success: true,
-    user: req.user
-  });
-});
-
-// ==========================================
-// 10. ENDPOINTS DE CANCIÓN DE MARKETING
-// ==========================================
-
-app.get('/api/config/marketing-songs', (req, res) => {
-  res.json(marketingSongStyles);
-});
-
-app.put('/api/admin/marketing-songs', authenticateJWT, (req, res) => {
-  const { styles } = req.body;
-  if (!Array.isArray(styles) || styles.length === 0) {
-    return res.status(400).json({ error: 'Formato de estilos inválido.' });
-  }
-
-  marketingSongStyles = styles;
-  logAuditEvent('MARKETING_SONGS_UPDATED', req.user.email, `Canciones de marketing actualizadas (${styles.length} estilos)`, req);
-
-  res.json({
-    success: true,
-    message: 'Canciones de marketing multi-estilo actualizadas con éxito.',
-    styles: marketingSongStyles
-  });
-});
-
-// ==========================================
-// 11. ENDPOINTS PÚBLICOS
+// ENDPOINTS
 // ==========================================
 
 app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    service: 'Melofilia API Server',
-    organization: 'Drop It Co',
-    timestamp: new Date().toISOString()
-  });
+  res.json({ status: 'OK', environment: 'production', db: 'supabase' });
 });
 
-app.get('/api/config/pricing', (req, res) => {
-  res.json(pricingConfig);
+// ADMIN: LOGIN
+app.post('/api/admin/login', authLimiter, (req, res) => {
+  const { usuario, password } = req.body;
+  if (!usuario || !password) {
+    return res.status(400).json({ error: 'Usuario y contraseña son requeridos.' });
+  }
+
+  const admin = adminUsers.find(u => u.usuario === usuario);
+  if (!admin || !bcrypt.compareSync(password, admin.passwordHash)) {
+    logAuditEvent('FAILED_LOGIN_ATTEMPT', usuario, 'Credenciales inválidas o usuario no encontrado', req);
+    return res.status(401).json({ error: 'Credenciales inválidas.' });
+  }
+
+  const token = jwt.sign({ id: admin.id, role: admin.role, name: admin.name }, JWT_SECRET, { expiresIn: '8h' });
+  logAuditEvent('ADMIN_LOGIN_SUCCESS', admin.name, 'Inicio de sesión exitoso', req);
+  res.json({ success: true, token, user: { name: admin.name, role: admin.role } });
 });
 
-app.get('/api/reviews/public', (req, res) => {
-  const approved = contactMessages.filter(m => m.category === 'REVIEW' && m.is_approved_review);
-  res.json(approved);
+// GET /api/marketing-styles
+app.get('/api/marketing-styles', async (req, res) => {
+  const { data, error } = await supabase.from('marketing_songs').select('*').order('sort_order', { ascending: true });
+  if (error) return res.status(500).json({ error: 'Error al obtener estilos.' });
+  res.json(data);
 });
 
-// Crear Orden Pública
+// PATCH /api/admin/marketing-styles
+app.patch('/api/admin/marketing-styles', authenticateJWT, requireRole(['OWNER']), async (req, res) => {
+  const { styles } = req.body;
+  if (!Array.isArray(styles)) return res.status(400).json({ error: 'Formato inválido.' });
+
+  for (const style of styles) {
+    await supabase.from('marketing_songs').update({
+      name: style.name,
+      tagline: style.tagline,
+      tempo: style.tempo,
+      audio_url: style.audio_url,
+      lyrics: style.lyrics,
+      sort_order: style.sort_order
+    }).eq('id', style.id);
+  }
+  
+  logAuditEvent('MARKETING_STYLES_UPDATED', req.user.name, 'Estilos musicales actualizados', req);
+  const { data } = await supabase.from('marketing_songs').select('*').order('sort_order', { ascending: true });
+  res.json({ success: true, message: 'Estilos actualizados.', styles: data });
+});
+
+// GET /api/pricing
+app.get('/api/pricing', async (req, res) => {
+  const { data, error } = await supabase.from('pricing_config').select('*').eq('id', 'default').single();
+  if (error || !data) return res.status(500).json({ error: 'Error al obtener configuración de precios.' });
+  res.json(data);
+});
+
+// GET /api/admin/contact-messages
+app.get('/api/admin/contact-messages', authenticateJWT, async (req, res) => {
+  const { data, error } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: 'Error BD.' });
+  res.json({ total: data.length, messages: data });
+});
+
+// GET /api/reviews
+app.get('/api/reviews', async (req, res) => {
+  const { data, error } = await supabase.from('contact_messages')
+    .select('*')
+    .eq('category', 'REVIEW')
+    .eq('is_approved_review', true);
+  if (error) return res.status(500).json({ error: 'Error BD.' });
+  res.json(data);
+});
+
+// POST /api/contact
+app.post('/api/contact', contactLimiter, async (req, res) => {
+  const { name, email, category, orderNumber, message } = req.body;
+  if (!name || !email || !message) {
+    return res.status(400).json({ error: 'Nombre, email y mensaje son obligatorios.' });
+  }
+
+  const newMsg = {
+    name,
+    email,
+    category: category || 'SERVICIOS',
+    order_number: orderNumber || null,
+    message,
+    status: 'NEW',
+    is_approved_review: false
+  };
+
+  const { error } = await supabase.from('contact_messages').insert([newMsg]);
+  if (error) return res.status(500).json({ error: 'Error BD.' });
+
+  logAuditEvent('CONTACT_MESSAGE_RECEIVED', 'GUEST', `Nuevo mensaje de: ${name} (${category})`, req);
+  res.status(201).json({ success: true, message: 'Mensaje enviado correctamente.' });
+});
+
+// POST /api/orders
 app.post('/api/orders', ordersLimiter, async (req, res) => {
+  const orderData = req.body;
+  
+  if (!orderData.customer_name || !orderData.customer_email || !orderData.product_tier) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios para generar el pedido.' });
+  }
+
+  const { data: pricingData } = await supabase.from('pricing_config').select('*').eq('id', 'default').single();
+  const pricing = pricingData || {
+    express: { current_price: 120000 },
+    semi_pro: { current_price: 280000 },
+    stems_addon: { current_price: 50000 }
+  };
+
+  const isExpress = orderData.product_tier === 'EXPRESS';
+  const has_stems = Boolean(orderData.has_stems);
+  
+  const basePrice = isExpress 
+    ? pricing.express.current_price 
+    : pricing.semi_pro.current_price;
+  const currentStemsPrice = has_stems ? pricing.stems_addon.current_price : 0;
+  const total_amount = basePrice + currentStemsPrice;
+
+  const order_number = `MLF-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
+
   try {
-    const {
-      customer_name,
-      customer_email,
-      customer_phone,
-      product_tier = 'SEMI_PRO',
-      genre,
-      mood,
-      occasion,
-      story_details,
-      key_phrases = [],
-      has_stems = false,
-      client_audio_notes = '',
-      rhythm_audio_data = null,
-      voice_audio_data = null
-    } = req.body;
-
-    if (!customer_name || !customer_email || !genre) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios para registrar la orden.' });
-    }
-
-    const orderNumber = `MP-2026-${Math.floor(100000 + Math.random() * 900000)}`;
-    const orderId = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-    const currentBasePrice = product_tier === 'EXPRESS' 
-      ? pricingConfig.express.current_price 
-      : pricingConfig.semi_pro.current_price;
-    const currentStemsPrice = has_stems ? pricingConfig.stems_addon.current_price : 0;
-    const totalAmount = currentBasePrice + currentStemsPrice;
-
-    const newOrder = {
-      id: orderId,
-      order_number: orderNumber,
-      customer_name,
-      customer_email,
-      customer_phone,
-      product_tier,
-      genre,
-      mood,
-      occasion,
-      story_details: story_details || {},
-      key_phrases,
-      client_audio_notes,
-      rhythm_audio_data,
-      voice_audio_data,
-      total_amount: totalAmount,
-      currency: 'COP',
-      has_stems,
-      payment_status: 'PENDING',
-      payment_provider: 'MERCADO_PAGO',
-      payment_provider_reference: null,
-      order_status: 'AWAITING_PAYMENT',
-      // Flujo de Letra
-      current_lyrics: null,
-      lyrics_status: 'PENDING_PROPOSAL',
-      lyrics_feedback: null,
-      // 2 Canciones
-      version_a_url: null,
-      version_b_url: null,
-      corrections_allowed: 1,
-      corrections_used: 0,
-      download_expires_at: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      versions: [],
-      corrections: []
+    const preferenceData = {
+      items: [
+        {
+          title: `Melofilia - Plan ${orderData.product_tier}`,
+          description: `Canción personalizada. Género: ${orderData.genre}. Ocasión: ${orderData.occasion}`,
+          quantity: 1,
+          currency_id: 'COP',
+          unit_price: total_amount
+        }
+      ],
+      payer: {
+        name: orderData.customer_name,
+        email: orderData.customer_email
+      },
+      back_urls: {
+        success: `${APP_URL}/checkout/success`,
+        failure: `${APP_URL}/checkout/failure`,
+        pending: `${APP_URL}/checkout/pending`
+      },
+      auto_return: "approved",
+      external_reference: order_number
     };
 
-    // Crear preferencia en Mercado Pago
-    let checkoutUrl = '';
-    let preferenceId = '';
+    const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(preferenceData)
+    });
 
-    try {
-      const hostUrl = req.headers.host ? `https://${req.headers.host}` : APP_URL;
-      const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          items: [
-            {
-              id: orderId,
-              title: `Melofilia - Canción Personalizada (${product_tier}) - 2 Versiones`,
-              description: `Producción musical personalizada para ${customer_name} - Ref: ${orderNumber}`,
-              quantity: 1,
-              currency_id: 'COP',
-              unit_price: totalAmount
-            }
-          ],
-          payer: { 
-            name: customer_name,
-            email: customer_email,
-            phone: {
-              number: customer_phone ? customer_phone.replace(/[^0-9]/g, '') : ''
-            }
-          },
-          external_reference: orderNumber,
-          back_urls: {
-            success: `${hostUrl}/?order=${orderNumber}&payment_status=approved`,
-            failure: `${hostUrl}/?order=${orderNumber}&payment_status=rejected`,
-            pending: `${hostUrl}/?order=${orderNumber}&payment_status=pending`
-          },
-          auto_return: 'approved',
-          statement_descriptor: 'MELOFILIA'
-        })
-      });
+    const mpResult = await mpResponse.json();
 
-      if (mpResponse.ok) {
-        const mpData = await mpResponse.json();
-        preferenceId = mpData.id;
-        // Real Mercado Pago Production Checkout URL
-        checkoutUrl = mpData.init_point || mpData.sandbox_init_point;
-        newOrder.payment_provider_reference = preferenceId;
-      }
-    } catch (mpErr) {
-      console.error('Error comunicando con Mercado Pago:', mpErr);
+    if (!mpResponse.ok) {
+      throw new Error(`Error Mercado Pago: ${JSON.stringify(mpResult)}`);
     }
 
-    orders.unshift(newOrder);
-    logAuditEvent('ORDER_CREATED', customer_email, `Orden creada ${orderNumber} por $${totalAmount} COP`, req);
+    const newOrder = {
+      order_number,
+      customer_name: orderData.customer_name,
+      customer_email: orderData.customer_email,
+      customer_phone: orderData.customer_phone || '',
+      product_tier: orderData.product_tier,
+      genre: orderData.genre || '',
+      mood: orderData.mood || '',
+      occasion: orderData.occasion || '',
+      story_details: orderData.story_details || {},
+      key_phrases: orderData.key_phrases || [],
+      client_audio_notes: orderData.client_audio_notes || null,
+      rhythm_audio_data: orderData.rhythm_audio_data || null,
+      voice_audio_data: orderData.voice_audio_data || null,
+      total_amount,
+      has_stems,
+      payment_status: 'PENDING',
+      order_status: 'AWAITING_PAYMENT',
+      payment_provider_reference: mpResult.id,
+      lyrics_status: 'PENDING_PROPOSAL',
+      corrections_allowed: isExpress ? 1 : 2,
+      corrections_used: 0
+    };
+
+    const { error } = await supabase.from('orders').insert([newOrder]);
+    if (error) throw error;
+
+    logAuditEvent('ORDER_CREATED', 'SYSTEM', `Pedido Creado: ${order_number}`, req);
 
     res.status(201).json({
       success: true,
-      order: newOrder,
-      checkoutUrl: checkoutUrl || `${APP_URL}/pedido/${orderNumber}?simulated_payment=true`,
-      preferenceId
+      order_number,
+      init_point: mpResult.init_point
     });
+
   } catch (error) {
-    res.status(500).json({ error: 'Error al procesar la orden: ' + error.message });
+    console.error('Error procesando el pedido:', error);
+    res.status(500).json({ error: 'Hubo un error interno al crear el pedido o conectar con Mercado Pago.' });
   }
 });
 
-// Consultar Orden Privada (Portal del Cliente)
-app.get('/api/orders/:orderNumber', (req, res) => {
+// GET /api/orders/:orderNumber
+app.get('/api/orders/:orderNumber', async (req, res) => {
   const { orderNumber } = req.params;
-  const order = orders.find(o => o.order_number.toUpperCase() === orderNumber.toUpperCase());
-
-  if (!order) {
-    return res.status(404).json({ error: 'Pedido no encontrado. Verifica el número ingresado.' });
-  }
-
+  const { data: order, error } = await supabase.from('orders').select('*').ilike('order_number', orderNumber).single();
+  
+  if (error || !order) return res.status(404).json({ error: 'Pedido no encontrado.' });
   res.json(order);
 });
 
-// ==========================================
-// 12. FLUJO DE REVISIÓN Y APROBACIÓN DE LETRA
-// ==========================================
-
-// Admin propone letra al cliente
-app.post('/api/orders/:orderNumber/propose-lyrics', authenticateJWT, (req, res) => {
-  const { orderNumber } = req.params;
-  const { lyrics } = req.body;
-
-  if (!lyrics || !lyrics.trim()) {
-    return res.status(400).json({ error: 'El texto de la letra es requerido.' });
-  }
-
-  const order = orders.find(o => o.order_number.toUpperCase() === orderNumber.toUpperCase());
-  if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
-
-  order.current_lyrics = lyrics.trim();
-  order.lyrics_status = 'AWAITING_CLIENT_APPROVAL';
-  order.order_status = 'LYRICS_CLIENT_REVIEW';
-  order.updated_at = new Date().toISOString();
-
-  logAuditEvent('LYRICS_PROPOSED', req.user.email, `Propuesta de letra enviada para pedido ${orderNumber}`, req);
-
-  res.json({
-    success: true,
-    message: 'Propuesta de letra enviada al cliente para su revisión.',
-    order
-  });
+// GET /api/admin/orders
+app.get('/api/admin/orders', authenticateJWT, async (req, res) => {
+  const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: 'Error BD.' });
+  res.json({ total: data.length, orders: data });
 });
 
-// Cliente aprueba o solicita ajuste sobre la letra
-app.post('/api/orders/:orderNumber/review-lyrics', (req, res) => {
-  const { orderNumber } = req.params;
-  const { action, feedback } = req.body; // action: 'APPROVE' | 'REQUEST_ADJUSTMENT'
-
-  const order = orders.find(o => o.order_number.toUpperCase() === orderNumber.toUpperCase());
-  if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
-
-  if (action === 'APPROVE') {
-    order.lyrics_status = 'APPROVED';
-    order.order_status = 'IN_PRODUCTION';
-    order.lyrics_feedback = null;
-    logAuditEvent('LYRICS_APPROVED', order.customer_email, `Letra aprobada por el cliente para ${orderNumber}`, req);
-  } else if (action === 'REQUEST_ADJUSTMENT') {
-    if (!feedback || !feedback.trim()) {
-      return res.status(400).json({ error: 'Por favor indica qué ajustes deseas en la letra.' });
-    }
-    order.lyrics_status = 'ADJUSTMENT_REQUESTED';
-    order.lyrics_feedback = feedback.trim();
-    order.order_status = 'LYRICS_IN_REVISION';
-    logAuditEvent('LYRICS_ADJUSTMENT_REQUESTED', order.customer_email, `Ajuste de letra solicitado para ${orderNumber}: ${feedback.slice(0, 50)}...`, req);
-  } else {
-    return res.status(400).json({ error: 'Acción inválida. Usa APPROVE o REQUEST_ADJUSTMENT.' });
-  }
-
-  order.updated_at = new Date().toISOString();
-
-  res.json({
-    success: true,
-    message: action === 'APPROVE' 
-      ? '¡Letra aprobada con éxito! Tu canción ha entrado a grabación y producción musical.' 
-      : 'Tus comentarios han sido enviados al productor para ajustar la letra.',
-    order
-  });
-});
-
-// Subir y Entregar 2 Versiones de Canción (Admin)
-app.patch('/api/admin/orders/:id/deliver-versions', authenticateJWT, (req, res) => {
+// PATCH /api/admin/orders/:id/status
+app.patch('/api/admin/orders/:id/status', authenticateJWT, async (req, res) => {
   const { id } = req.params;
-  const { version_a_url, version_b_url, production_notes } = req.body;
+  const { status, payment_status } = req.body;
 
-  const order = orders.find(o => o.id === id || o.order_number === id);
-  if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+  const { data: order } = await supabase.from('orders').select('*').or(`id.eq.${id},order_number.eq.${id}`).single();
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
 
-  if (version_a_url) order.version_a_url = version_a_url;
-  if (version_b_url) order.version_b_url = version_b_url;
-  if (production_notes) order.production_notes = production_notes;
+  const updateData = {};
+  if (status) updateData.order_status = status;
+  if (payment_status) updateData.payment_status = payment_status;
 
-  order.order_status = 'READY_FOR_CLIENT_REVIEW';
-  order.updated_at = new Date().toISOString();
-
-  logAuditEvent('VERSIONS_DELIVERED', req.user.email, `2 Versiones entregadas para pedido ${order.order_number}`, req);
-
-  res.json({
-    success: true,
-    message: 'Las 2 versiones de la canción han sido cargadas exitosamente para previsualización del cliente.',
-    order
-  });
+  await supabase.from('orders').update(updateData).eq('id', order.id);
+  
+  logAuditEvent('ORDER_STATUS_UPDATED', req.user.name, `Estado del pedido ${order.order_number} actualizado`, req);
+  
+  const { data: updatedOrder } = await supabase.from('orders').select('*').eq('id', order.id).single();
+  res.json({ success: true, order: updatedOrder });
 });
 
-// Corrección de Audio (1 Sola Vez Permitida)
-app.post('/api/orders/:orderNumber/correction', (req, res) => {
-  const { orderNumber } = req.params;
-  const { category = 'AUDIO_MIX', specific_instructions } = req.body;
-
-  const order = orders.find(o => o.order_number.toUpperCase() === orderNumber.toUpperCase());
-  if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
-
-  if (order.corrections_used >= order.corrections_allowed) {
-    return res.status(400).json({ 
-      error: 'Este pedido ya consumió su única ronda de corrección gratuita incluida.' 
-    });
-  }
-
-  const correctionEntry = {
-    id: `cor_${Date.now()}`,
-    requested_at: new Date().toISOString(),
-    category,
-    specific_instructions,
-    status: 'IN_REVISION'
+// PATCH /api/admin/pricing
+app.patch('/api/admin/pricing', authenticateJWT, requireRole(['OWNER']), async (req, res) => {
+  const { express: exp, semi_pro: semi, stems_addon: stems } = req.body;
+  
+  const { data: current } = await supabase.from('pricing_config').select('*').eq('id', 'default').single();
+  
+  const updateData = {
+    express: { ...current.express, ...exp },
+    semi_pro: { ...current.semi_pro, ...semi },
+    stems_addon: { ...current.stems_addon, ...stems },
+    updated_at: new Date().toISOString()
   };
 
-  order.corrections.push(correctionEntry);
-  order.corrections_used += 1;
-  order.order_status = 'CORRECTION_REQUESTED';
-  order.updated_at = new Date().toISOString();
+  await supabase.from('pricing_config').update(updateData).eq('id', 'default');
 
-  logAuditEvent('CORRECTION_REQUESTED', order.customer_email, `Corrección de audio solicitada para ${orderNumber}`, req);
-
-  res.json({
-    success: true,
-    message: 'Corrección registrada exitosamente. Nuestro equipo de producción ajustará la versión.',
-    corrections_remaining: order.corrections_allowed - order.corrections_used,
-    order
-  });
+  logAuditEvent('PRICING_UPDATED', req.user.name, 'Configuración de precios actualizada', req);
+  res.json({ success: true, pricing: updateData });
 });
 
-// Bóveda de Descargas: Emisión de Token Temporal Seguro para 2 Versiones
-app.post('/api/orders/:orderNumber/download-grant', (req, res) => {
+// GET /api/admin/audit-logs
+app.get('/api/admin/audit-logs', authenticateJWT, requireRole(['OWNER']), async (req, res) => {
+  const { data, error } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(500);
+  if (error) return res.status(500).json({ error: 'Error BD.' });
+  res.json({ total: data.length, logs: data });
+});
+
+app.post('/api/orders/:orderNumber/propose-lyrics', authenticateJWT, async (req, res) => {
   const { orderNumber } = req.params;
-  const order = orders.find(o => o.order_number.toUpperCase() === orderNumber.toUpperCase());
-
-  if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
-
-  if (order.order_status !== 'DELIVERED') {
-    return res.status(400).json({ error: 'Los archivos aún no están en estado de entrega definitiva.' });
-  }
-
-  if (order.download_expires_at && new Date() > new Date(order.download_expires_at)) {
-    return res.status(410).json({ 
-      error: 'La ventana de descarga de 7 días ha expirado. Contacta a soporte para reactivación.' 
-    });
-  }
-
-  const token = jwt.sign(
-    { order_id: order.id, order_number: order.order_number, purpose: 'download_vault' },
-    JWT_SECRET,
-    { expiresIn: '5m' }
-  );
-
-  logAuditEvent('DOWNLOAD_GRANT_ISSUED', order.customer_email, `Grant de descarga emitido para ${orderNumber}`, req);
-
-  res.json({
-    success: true,
-    token,
-    expires_in_seconds: 300,
-    download_window_expires_at: order.download_expires_at,
-    assets: {
-      mp3_version_a: `${order.delivery_assets?.mp3_version_a || ''}?grant=${token}`,
-      mp3_version_b: `${order.delivery_assets?.mp3_version_b || ''}?grant=${token}`,
-      wav_version_a: order.product_tier === 'SEMI_PRO' ? `${order.delivery_assets?.wav_version_a || ''}?grant=${token}` : null,
-      wav_version_b: order.product_tier === 'SEMI_PRO' ? `${order.delivery_assets?.wav_version_b || ''}?grant=${token}` : null,
-      cover_art_url: order.product_tier === 'SEMI_PRO' ? `${order.delivery_assets?.cover_art_url || ''}?grant=${token}` : null,
-      lyrics_pdf_url: `${order.delivery_assets?.lyrics_pdf_url || ''}?grant=${token}`,
-      stems_zip_url: order.has_stems ? `${order.delivery_assets?.stems_zip_url || ''}?grant=${token}` : null
-    }
-  });
-});
-
-// Buzón de Contacto Público
-app.post('/api/contact', contactLimiter, (req, res) => {
-  try {
-    const { name, email, category = 'SERVICIOS', order_number, message } = req.body;
-
-    if (!name || !email || !message) {
-      return res.status(400).json({ error: 'Nombre, correo y mensaje son obligatorios.' });
-    }
-
-    const newMessage = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      name: name.trim(),
-      email: email.trim(),
-      category: category.toUpperCase(),
-      order_number: order_number ? order_number.trim().toUpperCase() : null,
-      message: message.trim(),
-      status: 'NEW',
-      is_approved_review: false,
-      internal_notes: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    contactMessages.unshift(newMessage);
-    logAuditEvent('CONTACT_MESSAGE', email, `Mensaje recibido de categoría ${category}`, req);
-
-    res.status(201).json({
-      success: true,
-      message: 'Tu mensaje ha sido recibido por el equipo de Melofilia. Te responderemos a la brevedad.',
-      entry: newMessage
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Error al procesar el mensaje: ' + err.message });
-  }
-});
-
-// ==========================================
-// 13. ENDPOINTS ADMINISTRATIVOS PROTEGIDOS
-// ==========================================
-
-// Consultar Pedidos
-app.get('/api/admin/orders', authenticateJWT, (req, res) => {
-  res.json({
-    total: orders.length,
-    orders: orders
-  });
-});
-
-// Actualizar Estado de Pedido
-app.patch('/api/admin/orders/:id/status', authenticateJWT, (req, res) => {
-  const { id } = req.params;
-  const { status, version_a_url, version_b_url, production_notes } = req.body;
-
-  const order = orders.find(o => o.id === id || o.order_number === id);
-  if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
-
-  const oldStatus = order.order_status;
-  order.order_status = status;
-  if (version_a_url) order.version_a_url = version_a_url;
-  if (version_b_url) order.version_b_url = version_b_url;
-  if (production_notes) order.production_notes = production_notes;
+  const { lyrics } = req.body;
   
-  if (status === 'DELIVERED') {
-    order.delivered_at = new Date().toISOString();
-    order.download_expires_at = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
-  }
+  const { data: order } = await supabase.from('orders').select('*').ilike('order_number', orderNumber).single();
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
 
-  order.updated_at = new Date().toISOString();
-  logAuditEvent('ORDER_STATUS_CHANGED', req.user.email, `Estado de ${order.order_number} cambiado de ${oldStatus} a ${status}`, req);
+  await supabase.from('orders').update({
+    current_lyrics: lyrics,
+    lyrics_status: 'AWAITING_REVIEW'
+  }).eq('id', order.id);
 
-  res.json({
-    success: true,
-    order
-  });
+  logAuditEvent('LYRICS_PROPOSED', req.user.name, `Propuesta de letra enviada para: ${orderNumber}`, req);
+  res.json({ success: true, message: 'Letra enviada al cliente para revisión.' });
 });
 
-// Actualizar Precios y Descuentos (Solo OWNER)
-app.put('/api/admin/pricing', authenticateJWT, requireRole(['OWNER']), (req, res) => {
-  try {
-    const { express: exp, semi_pro: semi, stems_addon: stems } = req.body;
+app.post('/api/orders/:orderNumber/review-lyrics', async (req, res) => {
+  const { orderNumber } = req.params;
+  const { approved, feedback } = req.body;
 
-    if (exp) pricingConfig.express = { ...pricingConfig.express, ...exp };
-    if (semi) pricingConfig.semi_pro = { ...pricingConfig.semi_pro, ...semi };
-    if (stems) pricingConfig.stems_addon = { ...pricingConfig.stems_addon, ...stems };
+  const { data: order } = await supabase.from('orders').select('*').ilike('order_number', orderNumber).single();
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
 
-    logAuditEvent('PRICING_UPDATED', req.user.email, 'Configuración de precios y descuentos actualizada', req);
+  const status = approved ? 'APPROVED' : 'NEEDS_CORRECTION';
+  await supabase.from('orders').update({
+    lyrics_status: status,
+    lyrics_feedback: feedback || null
+  }).eq('id', order.id);
 
-    res.json({
-      success: true,
-      message: 'Configuración de precios y descuentos actualizada exitosamente.',
-      pricing: pricingConfig
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Error al actualizar precios: ' + err.message });
-  }
+  logAuditEvent('LYRICS_REVIEWED', 'CUSTOMER', `El cliente ${approved ? 'aprobó' : 'rechazó'} la letra: ${orderNumber}`, req);
+  res.json({ success: true, status });
 });
 
-// Buzón Administrativo
-app.get('/api/admin/contact', authenticateJWT, (req, res) => {
-  res.json({
-    total: contactMessages.length,
-    messages: contactMessages
-  });
-});
-
-app.patch('/api/admin/contact/:id', authenticateJWT, (req, res) => {
+app.patch('/api/admin/orders/:id/deliver-versions', authenticateJWT, async (req, res) => {
   const { id } = req.params;
-  const { status, is_approved_review, internal_notes, linked_order_number } = req.body;
+  const { versionA, versionB, notes } = req.body;
 
-  const msg = contactMessages.find(m => m.id === id);
-  if (!msg) return res.status(404).json({ error: 'Mensaje no encontrado' });
+  const { data: order } = await supabase.from('orders').select('*').or(`id.eq.${id},order_number.eq.${id}`).single();
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
 
-  if (status) msg.status = status;
-  if (is_approved_review !== undefined) msg.is_approved_review = is_approved_review;
-  if (internal_notes !== undefined) msg.internal_notes = internal_notes;
-  if (linked_order_number !== undefined) msg.order_number = linked_order_number;
-  msg.updated_at = new Date().toISOString();
+  await supabase.from('orders').update({
+    version_a_url: versionA,
+    version_b_url: versionB,
+    production_notes: notes,
+    order_status: 'DELIVERED',
+    delivered_at: new Date().toISOString()
+  }).eq('id', order.id);
 
-  logAuditEvent('CONTACT_MESSAGE_UPDATED', req.user.email, `Mensaje ${id} actualizado a estado ${msg.status}`, req);
-
-  res.json({
-    success: true,
-    message: 'Mensaje de contacto actualizado exitosamente',
-    entry: msg
-  });
+  logAuditEvent('VERSIONS_DELIVERED', req.user.name, `Versiones A/B entregadas para pedido: ${order.order_number}`, req);
+  res.json({ success: true, message: 'Versiones entregadas exitosamente.' });
 });
 
-// Logs de Auditoría
-app.get('/api/admin/audit-logs', authenticateJWT, (req, res) => {
-  res.json({
-    total: auditLogs.length,
-    logs: auditLogs
-  });
+app.post('/api/orders/:orderNumber/correction', async (req, res) => {
+  const { orderNumber } = req.params;
+  const { correctionNotes } = req.body;
+
+  const { data: order } = await supabase.from('orders').select('*').ilike('order_number', orderNumber).single();
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+
+  if (order.corrections_used >= order.corrections_allowed) {
+    return res.status(400).json({ error: 'Ya has utilizado todas tus correcciones gratuitas.' });
+  }
+
+  await supabase.from('orders').update({
+    order_status: 'IN_CORRECTION',
+    corrections_used: order.corrections_used + 1,
+    production_notes: `[CORRECCIÓN SOLICITADA]: ${correctionNotes}`
+  }).eq('id', order.id);
+
+  logAuditEvent('CORRECTION_REQUESTED', 'CUSTOMER', `Corrección solicitada para: ${orderNumber}`, req);
+  res.json({ success: true, message: 'Corrección solicitada. Nuestro equipo trabajará en ella.' });
 });
 
-// Simulación de Pago (Testing)
-app.post('/api/admin/simulate-payment', authenticateJWT, (req, res) => {
-  const { orderNumber } = req.body;
-  const order = orders.find(o => o.order_number.toUpperCase() === orderNumber.toUpperCase());
+app.post('/api/orders/:orderNumber/download-grant', async (req, res) => {
+  const { orderNumber } = req.params;
+  const { selectedVersion } = req.body; // 'A' o 'B'
 
-  if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+  const { data: order } = await supabase.from('orders').select('*').ilike('order_number', orderNumber).single();
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
 
-  order.payment_status = 'APPROVED';
-  order.order_status = 'IN_PRODUCTION';
-  order.updated_at = new Date().toISOString();
+  const expireDate = new Date();
+  expireDate.setDate(expireDate.getDate() + 30); // 30 días para descargar
 
-  logAuditEvent('PAYMENT_SIMULATED', req.user.email, `Pago simulado como APROBADO para ${orderNumber}`, req);
+  const downloadLinks = {
+    mp3: selectedVersion === 'A' ? order.version_a_url : order.version_b_url,
+    wav: `https://mock.url/download/${orderNumber}_${selectedVersion}_Master.wav`,
+    stems: order.has_stems ? `https://mock.url/download/${orderNumber}_Stems.zip` : null
+  };
 
-  res.json({
-    success: true,
-    message: `Pago simulado como APROBADO para el pedido ${orderNumber}.`,
-    order
-  });
+  await supabase.from('orders').update({
+    order_status: 'COMPLETED',
+    delivery_assets: downloadLinks,
+    download_expires_at: expireDate.toISOString()
+  }).eq('id', order.id);
+
+  logAuditEvent('DOWNLOAD_GRANTED', 'CUSTOMER', `Cliente seleccionó versión ${selectedVersion} para descargar.`, req);
+  res.json({ success: true, downloadLinks, expires_at: expireDate.toISOString() });
 });
 
+module.exports = app;
+
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`🎵 Melofilia API Server (Drop It Co) escuchando en http://localhost:${PORT}`);
-  console.log(`🛡️ Seguridad JWT & Rate Limiting: ACTIVOS`);
-  console.log(`🎼 Canción de Marketing Multi-Estilo: HABILITADA`);
-  console.log(`✍️ Flujo de Revisión de Letras & 2 Versiones: HABILITADO`);
+  console.log(`Melofilia Secure Backend API running on port ${PORT}`);
 });
+
