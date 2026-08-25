@@ -241,9 +241,7 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
       {/* Unified Admin Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 rounded-3xl bg-[#12141e] border border-[#262a40] shadow-xl">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-violet-600/20 border border-violet-500/40 flex items-center justify-center">
-            <ShieldCheck className="w-6 h-6 text-violet-400" />
-          </div>
+          <img src="/logo.png" alt="Melofilia" className="h-10 w-auto drop-shadow-md hidden sm:block" />
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-display font-bold text-white">Consola Unificada Melofilia</h2>

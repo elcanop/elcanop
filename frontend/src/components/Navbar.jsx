@@ -12,20 +12,7 @@ export default function Navbar({ activeTab, setActiveTab, currentOrderNumber, on
             onClick={() => setActiveTab('landing')}
             className="flex items-center gap-3 group text-left focus:outline-none"
           >
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-300 flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform">
-              <Music className="w-6 h-6 text-black" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-display font-black text-2xl tracking-tight text-white group-hover:text-amber-400 transition-colors">
-                  Melofilia
-                </span>
-                <span className="px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded-md">
-                  Drop It Co
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 font-medium tracking-wide">Música personalizada de estudio</p>
-            </div>
+            <img src="/logo.png" alt="Melofilia by Drop It Co" className="h-10 sm:h-12 w-auto group-hover:scale-[1.02] transition-transform drop-shadow-[0_0_15px_rgba(139,92,246,0.3)]" />
           </button>
 
           {/* Public Navigation Links */}
