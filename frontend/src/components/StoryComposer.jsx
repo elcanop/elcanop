@@ -9,6 +9,7 @@ import confetti from 'canvas-confetti';
 import MicRecorder from 'mic-recorder-to-mp3';
 
 export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated, pricing }) {
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [emptyFields, setEmptyFields] = useState([]);
