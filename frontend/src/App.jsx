@@ -3,11 +3,13 @@ import Navbar from './components/Navbar';
 import AudioHero from './components/AudioHero';
 import ComparisonTable from './components/ComparisonTable';
 import HowItWorksAndFaq from './components/HowItWorksAndFaq';
+import Reviews from './components/Reviews';
 import StoryComposer from './components/StoryComposer';
 import OrderTracker from './components/OrderTracker';
 import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
 import ContactModal from './components/ContactModal';
+import CheckoutSuccess from './components/CheckoutSuccess';
 import Footer from './components/Footer';
 import { CreditCard, ExternalLink, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { getPricingConfig, getAdminUser, verifyAdminSession, logoutAdmin } from './utils/api';
@@ -93,17 +95,24 @@ export default function App() {
       setActiveTab('pedido');
     }
 
-    if (paymentStatus === 'approved') {
-      setBannerNotice({
-        type: 'success',
-        text: '¡Pago aprobado exitosamente! Tu orden ha sido asignada a cola de producción.'
-      });
-      setActiveTab('pedido');
-    } else if (paymentStatus === 'rejected') {
-      setBannerNotice({
-        type: 'error',
-        text: 'El pago no pudo ser completado. Puedes intentar nuevamente desde tu portal de pedido.'
-      });
+    // Check routing based on pathname for Mercado Pago redirects
+    const path = window.location.pathname;
+    if (path.startsWith('/checkout/success') || path.startsWith('/checkout/pending') || path.startsWith('/checkout/failure')) {
+      const paymentId = params.get('payment_id');
+      const externalReference = params.get('external_reference');
+      if (externalReference) {
+        setCurrentOrderNumber(externalReference);
+        setActiveTab('checkout_success');
+      }
+    } else {
+      if (paymentStatus === 'approved') {
+        setActiveTab('pedido');
+      } else if (paymentStatus === 'rejected') {
+        setBannerNotice({
+          type: 'error',
+          text: 'El pago no pudo ser completado. Puedes intentar nuevamente desde tu portal de pedido.'
+        });
+      }
     }
 
     // Listen to hash change for hidden admin navigation
@@ -210,6 +219,7 @@ export default function App() {
               pricing={pricing}
               onSelectTier={(tier) => handleStartCreating(tier)} 
             />
+            <Reviews />
             <div id="how-it-works-section">
               <HowItWorksAndFaq 
                 onStartCreating={() => handleStartCreating('SEMI_PRO')} 
@@ -251,6 +261,17 @@ export default function App() {
           )
         )}
 
+        {/* VIEW 5: POST-PAYMENT SUCCESS SCREEN */}
+        {activeTab === 'checkout_success' && (
+          <CheckoutSuccess 
+            orderNumber={currentOrderNumber}
+            paymentId={new URLSearchParams(window.location.search).get('payment_id')}
+            onGoToOrder={(orderNum) => {
+              window.history.replaceState({}, '', '/');
+              handleSelectOrderToView(orderNum);
+            }}
+          />
+        )}
       </main>
 
       {/* Contact Inbox Modal */}

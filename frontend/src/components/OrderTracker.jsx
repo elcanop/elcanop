@@ -3,7 +3,7 @@ import {
   Search, Music, CheckCircle2, Clock, Play, Square, Download, 
   MessageSquare, AlertCircle, FileText, Sparkles, Shield, ChevronRight, Loader2, Volume2, ThumbsUp, Edit3 
 } from 'lucide-react';
-import { getOrder, reviewLyrics, submitCorrection, requestDownloadGrant } from '../utils/api';
+import { getOrder, reviewLyrics, submitCorrection, reviewDelivery } from '../utils/api';
 
 export default function OrderTracker({ initialOrderNumber = '' }) {
   const [orderNumber, setOrderNumber] = useState(initialOrderNumber);
@@ -29,9 +29,10 @@ export default function OrderTracker({ initialOrderNumber = '' }) {
   const [submittingCorrection, setSubmittingCorrection] = useState(false);
   const [correctionSuccess, setCorrectionSuccess] = useState(null);
 
-  // Download state
-  const [downloads, setDownloads] = useState(null);
-  const [authorizingDownload, setAuthorizingDownload] = useState(false);
+  // Delivery Review / Download state
+  const [reviewingDelivery, setReviewingDelivery] = useState(false);
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [musicalFeedback, setMusicalFeedback] = useState('');
 
   const fetchOrderDetails = async (numToFetch = orderNumber) => {
     if (!numToFetch.trim()) {
@@ -43,7 +44,7 @@ export default function OrderTracker({ initialOrderNumber = '' }) {
     try {
       const data = await getOrder(numToFetch.trim());
       setOrder(data);
-      setDownloads(null);
+      setOrder(data);
     } catch (err) {
       setError(err.message || 'No se encontró ningún pedido con ese número. Verifica el código e intenta nuevamente.');
       setOrder(null);
@@ -132,16 +133,38 @@ export default function OrderTracker({ initialOrderNumber = '' }) {
     }
   };
 
-  // Download Grant
-  const handleAuthorizeDownload = async () => {
-    setAuthorizingDownload(true);
+  // Delivery Review
+  const handleAcceptDelivery = async () => {
+    setReviewingDelivery(true);
     try {
-      const grantData = await requestDownloadGrant(order.order_number);
-      setDownloads(grantData.assets);
+      const grantData = await reviewDelivery(order.order_number, {
+        approved: true,
+        selectedVersion: activeVersion
+      });
+      fetchOrderDetails(order.order_number);
     } catch (err) {
-      setError(err.message || 'Error al autorizar descarga');
+      setError(err.message || 'Error al procesar la aceptación de entrega');
     } finally {
-      setAuthorizingDownload(false);
+      setReviewingDelivery(false);
+    }
+  };
+
+  const handleRequestMusicalCorrection = async (e) => {
+    e.preventDefault();
+    if (!musicalFeedback.trim()) return;
+
+    setReviewingDelivery(true);
+    try {
+      await reviewDelivery(order.order_number, {
+        approved: false,
+        feedback: musicalFeedback
+      });
+      fetchOrderDetails(order.order_number);
+      setShowCorrectionModal(false);
+    } catch (err) {
+      setError(err.message || 'Error al enviar corrección musical');
+    } finally {
+      setReviewingDelivery(false);
     }
   };
 
@@ -258,10 +281,10 @@ export default function OrderTracker({ initialOrderNumber = '' }) {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2">
               {[
                 { label: '1. Pedido & Pago', done: true },
-                { label: '2. Revisión Letra', done: ['LYRICS_CLIENT_REVIEW', 'LYRICS_IN_REVISION', 'IN_PRODUCTION', 'READY_FOR_CLIENT_REVIEW', 'DELIVERED'].includes(order.order_status) },
-                { label: '3. Grabación Estudio', done: ['IN_PRODUCTION', 'READY_FOR_CLIENT_REVIEW', 'DELIVERED'].includes(order.order_status) },
-                { label: '4. 2 Versiones Listas', done: ['READY_FOR_CLIENT_REVIEW', 'DELIVERED'].includes(order.order_status) },
-                { label: '5. Entrega & Bóveda', done: order.order_status === 'DELIVERED' }
+                { label: '2. Revisión Letra', done: ['LYRICS_CLIENT_REVIEW', 'LYRICS_IN_REVISION', 'IN_PRODUCTION', 'READY_FOR_CLIENT_REVIEW', 'DELIVERED_PENDING_REVIEW', 'CORRECTION_REQUESTED', 'COMPLETED'].includes(order.order_status) },
+                { label: '3. Grabación Estudio', done: ['IN_PRODUCTION', 'READY_FOR_CLIENT_REVIEW', 'DELIVERED_PENDING_REVIEW', 'CORRECTION_REQUESTED', 'COMPLETED'].includes(order.order_status) },
+                { label: '4. 2 Versiones Listas', done: ['READY_FOR_CLIENT_REVIEW', 'DELIVERED_PENDING_REVIEW', 'CORRECTION_REQUESTED', 'COMPLETED'].includes(order.order_status) },
+                { label: '5. Entrega & Bóveda', done: order.order_status === 'COMPLETED' }
               ].map((st, i) => (
                 <div 
                   key={i} 
@@ -438,9 +461,60 @@ export default function OrderTracker({ initialOrderNumber = '' }) {
           )}
 
           {/* ========================================================================= */}
-          {/* FASE 3: BÓVEDA DE DESCARGAS (7 DÍAS)                                      */}
+          {/* FASE 3: BÓVEDA DE REVISIÓN / DESCARGAS                                    */}
           {/* ========================================================================= */}
-          {order.order_status === 'DELIVERED' && (
+          {order.order_status === 'DELIVERED_PENDING_REVIEW' && (
+            <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-[#1c1a2e] to-[#12141e] border-2 border-emerald-500/40 shadow-2xl space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-[#262a40]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-base text-white">
+                      ¡Tus canciones están listas!
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Escucha las dos versiones arriba y cuéntanos qué te parecen.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleAcceptDelivery}
+                  disabled={reviewingDelivery}
+                  className="flex-1 flex items-center justify-center gap-3 py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold text-sm shadow-xl shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {reviewingDelivery ? <Loader2 className="w-5 h-5 animate-spin" /> : <ThumbsUp className="w-5 h-5" />}
+                  <span>¡Me Encanta! Aceptar Entrega</span>
+                </button>
+                
+                {order.corrections_used < order.corrections_allowed && (
+                  <button
+                    onClick={() => setShowCorrectionModal(true)}
+                    disabled={reviewingDelivery}
+                    className="flex-1 flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-[#090a0f] hover:bg-[#181b2a] border border-[#262a40] text-slate-300 font-bold text-sm transition-all"
+                  >
+                    <Edit3 className="w-4 h-4 text-amber-400" />
+                    <span>Solicitar Corrección Musical (Queda {order.corrections_allowed - order.corrections_used})</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {order.order_status === 'CORRECTION_REQUESTED' && (
+            <div className="p-6 sm:p-8 rounded-3xl bg-amber-500/10 border-2 border-amber-500/40 shadow-2xl text-center space-y-3">
+              <h3 className="font-display font-bold text-lg text-amber-400">Corrección en Proceso</h3>
+              <p className="text-xs text-amber-300">
+                Hemos recibido tu solicitud de corrección musical. Nuestro productor está trabajando en ella y pronto subiremos la nueva versión aquí mismo.
+              </p>
+            </div>
+          )}
+
+          {order.order_status === 'COMPLETED' && order.delivery_assets && (
             <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-[#1c1a2e] to-[#12141e] border-2 border-emerald-500/40 shadow-2xl space-y-6">
               
               <div className="flex items-center justify-between pb-4 border-b border-[#262a40]">
@@ -450,98 +524,48 @@ export default function OrderTracker({ initialOrderNumber = '' }) {
                   </div>
                   <div>
                     <h3 className="font-display font-bold text-base text-white">
-                      Bóveda Privada de Descargas (Ambas Canciones)
+                      Bóveda Privada de Descargas
                     </h3>
                     <p className="text-xs text-slate-400">
-                      Disponibles por 7 días con URLs firmadas de alta seguridad
+                      Disponibles por 30 días con URLs firmadas de alta seguridad
                     </p>
                   </div>
                 </div>
-
-                <span className="text-xs font-mono text-emerald-300 font-bold bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/30">
-                  {order.product_tier} ENTREGADO
-                </span>
               </div>
 
-              {!downloads ? (
-                <button
-                  onClick={handleAuthorizeDownload}
-                  disabled={authorizingDownload}
-                  className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold text-sm shadow-xl shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50"
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <a
+                  href={order.delivery_assets.mp3}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-between p-4 rounded-xl bg-[#090a0f] hover:bg-[#181b2a] border border-[#262a40] text-xs font-bold text-white transition-colors"
                 >
-                  {authorizingDownload ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                  <span>Generar Enlaces de Descarga para Ambas Canciones</span>
-                </button>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <span>🎵 MP3 Master Final</span>
+                  <Download className="w-4 h-4 text-emerald-400" />
+                </a>
+
+                <a
+                  href={order.delivery_assets.wav}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-between p-4 rounded-xl bg-[#090a0f] hover:bg-[#181b2a] border border-[#262a40] text-xs font-bold text-white transition-colors"
+                >
+                  <span>📀 WAV Studio 24-bit</span>
+                  <Download className="w-4 h-4 text-amber-400" />
+                </a>
+
+                {order.delivery_assets.stems && (
                   <a
-                    href={downloads.mp3_version_a}
+                    href={order.delivery_assets.stems}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center justify-between p-4 rounded-xl bg-[#090a0f] hover:bg-[#181b2a] border border-[#262a40] text-xs font-bold text-white transition-colors"
+                    className="flex items-center justify-between p-4 rounded-xl bg-[#090a0f] hover:bg-[#181b2a] border border-[#262a40] text-xs font-bold text-amber-300 transition-colors"
                   >
-                    <span>🎵 MP3 Master (Versión A)</span>
-                    <Download className="w-4 h-4 text-emerald-400" />
+                    <span>🗜️ STEMS Multipista (ZIP)</span>
+                    <Download className="w-4 h-4 text-amber-400" />
                   </a>
-
-                  <a
-                    href={downloads.mp3_version_b}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-between p-4 rounded-xl bg-[#090a0f] hover:bg-[#181b2a] border border-[#262a40] text-xs font-bold text-white transition-colors"
-                  >
-                    <span>🎵 MP3 Master (Versión B)</span>
-                    <Download className="w-4 h-4 text-emerald-400" />
-                  </a>
-
-                  {downloads.wav_version_a && (
-                    <a
-                      href={downloads.wav_version_a}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-between p-4 rounded-xl bg-[#090a0f] hover:bg-[#181b2a] border border-[#262a40] text-xs font-bold text-white transition-colors"
-                    >
-                      <span>📀 WAV Studio 24-bit (Versión A)</span>
-                      <Download className="w-4 h-4 text-amber-400" />
-                    </a>
-                  )}
-
-                  {downloads.wav_version_b && (
-                    <a
-                      href={downloads.wav_version_b}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-between p-4 rounded-xl bg-[#090a0f] hover:bg-[#181b2a] border border-[#262a40] text-xs font-bold text-white transition-colors"
-                    >
-                      <span>📀 WAV Studio 24-bit (Versión B)</span>
-                      <Download className="w-4 h-4 text-amber-400" />
-                    </a>
-                  )}
-
-                  <a
-                    href={downloads.lyrics_pdf_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-between p-4 rounded-xl bg-[#090a0f] hover:bg-[#181b2a] border border-[#262a40] text-xs font-bold text-white transition-colors"
-                  >
-                    <span>📄 Letra Oficial en PDF</span>
-                    <Download className="w-4 h-4 text-violet-400" />
-                  </a>
-
-                  {downloads.stems_zip_url && (
-                    <a
-                      href={downloads.stems_zip_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-between p-4 rounded-xl bg-[#090a0f] hover:bg-[#181b2a] border border-[#262a40] text-xs font-bold text-amber-300 transition-colors"
-                    >
-                      <span>🗜️ STEMS Multipista (STEMS.ZIP)</span>
-                      <Download className="w-4 h-4 text-amber-400" />
-                    </a>
-                  )}
-                </div>
-              )}
-
+                )}
+              </div>
             </div>
           )}
 
@@ -579,6 +603,45 @@ export default function OrderTracker({ initialOrderNumber = '' }) {
                   className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs"
                 >
                   {reviewingLyrics ? 'Enviando...' : 'Enviar Observaciones'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Solicitar Corrección Musical */}
+      {showCorrectionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-[#12141e] border-2 border-[#262a40] rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5">
+            <h3 className="font-display font-bold text-lg text-white">Solicitar Corrección Musical</h3>
+            <p className="text-xs text-slate-300">
+              Escribe qué ajustes musicales deseas que el productor realice en la canción.
+              (Ej. Cambiar el ritmo en el coro, ajustar un instrumento, etc.)
+            </p>
+            <form onSubmit={handleRequestMusicalCorrection} className="space-y-4">
+              <textarea
+                rows={5}
+                required
+                value={musicalFeedback}
+                onChange={(e) => setMusicalFeedback(e.target.value)}
+                placeholder="Explica qué quieres cambiar..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#090a0f] border border-[#262a40] text-white text-xs focus:border-amber-500 focus:outline-none placeholder-slate-500"
+              />
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCorrectionModal(false)}
+                  className="px-4 py-2 rounded-xl bg-[#181b2a] text-slate-300 text-xs font-semibold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={reviewingDelivery}
+                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs disabled:opacity-50"
+                >
+                  {reviewingDelivery ? 'Enviando...' : 'Enviar Corrección'}
                 </button>
               </div>
             </form>

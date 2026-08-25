@@ -4,19 +4,19 @@ const API_BASE = import.meta.env.VITE_API_URL !== undefined
 
 // Token Management
 export function getAdminToken() {
-  return sessionStorage.getItem('melofilia_admin_token');
+  return localStorage.getItem('melofilia_admin_token');
 }
 
 export function setAdminToken(token) {
   if (token) {
-    sessionStorage.setItem('melofilia_admin_token', token);
+    localStorage.setItem('melofilia_admin_token', token);
   } else {
-    sessionStorage.removeItem('melofilia_admin_token');
+    localStorage.removeItem('melofilia_admin_token');
   }
 }
 
 export function getAdminUser() {
-  const user = sessionStorage.getItem('melofilia_admin_user');
+  const user = localStorage.getItem('melofilia_admin_user');
   try {
     return user ? JSON.parse(user) : null;
   } catch (e) {
@@ -26,15 +26,15 @@ export function getAdminUser() {
 
 export function setAdminUser(user) {
   if (user) {
-    sessionStorage.setItem('melofilia_admin_user', JSON.stringify(user));
+    localStorage.setItem('melofilia_admin_user', JSON.stringify(user));
   } else {
-    sessionStorage.removeItem('melofilia_admin_user');
+    localStorage.removeItem('melofilia_admin_user');
   }
 }
 
 // 1. Autenticación Real de Admin (Drop It Co)
 export async function loginAdmin(usuario, password) {
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
+  const res = await fetch(`${API_BASE}/api/admin/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ usuario, password })
@@ -56,7 +56,7 @@ export async function verifyAdminSession() {
   if (!token) return null;
 
   try {
-    const res = await fetch(`${API_BASE}/api/auth/me`, {
+    const res = await fetch(`${API_BASE}/api/admin/me`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -137,14 +137,15 @@ export async function submitCorrection(orderNumber, correctionData) {
   return res.json();
 }
 
-export async function requestDownloadGrant(orderNumber) {
-  const res = await fetch(`${API_BASE}/api/orders/${encodeURIComponent(orderNumber)}/download-grant`, {
+export async function reviewDelivery(orderNumber, payload) {
+  const res = await fetch(`${API_BASE}/api/orders/${encodeURIComponent(orderNumber)}/review-delivery`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
   });
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.error || 'Error al autorizar descarga');
+    throw new Error(error.error || 'Error al procesar la revisión de entrega');
   }
   return res.json();
 }
@@ -301,6 +302,33 @@ export async function simulatePaymentApproval(orderNumber) {
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Error al simular pago');
+  }
+  return res.json();
+}
+
+export async function deleteAdminOrderAudio(orderId, type) {
+  const token = getAdminToken();
+  const res = await fetch(`${API_BASE}/api/admin/orders/${orderId}/audio?type=${type}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Error al eliminar el audio');
+  }
+  return res.json();
+}
+
+// 12. Verify Payment
+export async function verifyPayment(orderNumber, paymentId) {
+  const res = await fetch(`${API_BASE}/api/orders/${orderNumber}/verify-payment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ payment_id: paymentId })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Error verificando pago');
   }
   return res.json();
 }

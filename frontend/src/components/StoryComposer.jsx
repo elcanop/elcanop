@@ -6,12 +6,14 @@ import {
 } from 'lucide-react';
 import { createOrder } from '../utils/api';
 import confetti from 'canvas-confetti';
+import MicRecorder from 'mic-recorder-to-mp3';
 
 export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated, pricing }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastSaved, setLastSaved] = useState('Guardado en borrador');
+  const [legalAccepted, setLegalAccepted] = useState(false);
 
   const expressConfig = pricing?.express || { regular_price: 160000, current_price: 120000, discount_enabled: true, discount_badge: '25% OFF' };
   const semiProConfig = pricing?.semi_pro || { regular_price: 350000, current_price: 280000, discount_enabled: true, discount_badge: '20% OFF' };
@@ -111,37 +113,22 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
   const startRecordingRhythm = async () => {
     setError(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      rhythmMediaRecorderRef.current = mediaRecorder;
-      rhythmChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) rhythmChunksRef.current.push(e.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(rhythmChunksRef.current, { type: 'audio/webm' });
-        const url = URL.createObjectURL(blob);
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = () => {
-          setRhythmAudio({
-            url,
-            base64: reader.result,
-            name: `Ritmo_Grabado_${Date.now().toString().slice(-4)}.webm`,
-            type: 'recorded'
-          });
-          setFormData(prev => ({ ...prev, rhythm_reference_type: 'recorded' }));
-        };
-        stream.getTracks().forEach(t => t.stop());
-      };
-
-      mediaRecorder.start(200);
+      if (!rhythmMediaRecorderRef.current) {
+        rhythmMediaRecorderRef.current = new MicRecorder({ bitRate: 128 });
+      }
+      
+      await rhythmMediaRecorderRef.current.start();
+      
       setIsRecordingRhythm(true);
       setRhythmSeconds(0);
       rhythmTimerRef.current = setInterval(() => {
-        setRhythmSeconds(s => s + 1);
+        setRhythmSeconds(s => {
+          if (s >= 239) {
+            stopRecordingRhythm();
+            return 240;
+          }
+          return s + 1;
+        });
       }, 1000);
     } catch (err) {
       setError('Permite el acceso al micrófono en tu navegador para grabar tu referencia.');
@@ -150,11 +137,28 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
 
   const stopRecordingRhythm = () => {
     if (rhythmMediaRecorderRef.current && isRecordingRhythm) {
-      rhythmMediaRecorderRef.current.stop();
+      rhythmMediaRecorderRef.current.stop().getMp3().then(([buffer, blob]) => {
+        const url = URL.createObjectURL(blob);
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          setRhythmAudio({
+            url,
+            base64: reader.result,
+            name: `Ritmo_Grabado_${Date.now().toString().slice(-4)}.mp3`,
+            type: 'recorded'
+          });
+          setFormData(prev => ({ ...prev, rhythm_reference_type: 'recorded' }));
+        };
+      }).catch((e) => {
+        console.error('Error al guardar MP3 de ritmo', e);
+      });
       setIsRecordingRhythm(false);
       if (rhythmTimerRef.current) clearInterval(rhythmTimerRef.current);
     }
   };
+
+
 
   const handleUploadRhythm = (e) => {
     const file = e.target.files?.[0];
@@ -178,37 +182,22 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
   const startRecordingVoice = async () => {
     setError(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      voiceMediaRecorderRef.current = mediaRecorder;
-      voiceChunksRef.current = [];
+      if (!voiceMediaRecorderRef.current) {
+        voiceMediaRecorderRef.current = new MicRecorder({ bitRate: 128 });
+      }
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) voiceChunksRef.current.push(e.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(voiceChunksRef.current, { type: 'audio/webm' });
-        const url = URL.createObjectURL(blob);
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = () => {
-          setVoiceAudio({
-            url,
-            base64: reader.result,
-            name: `Voz_Grabada_${Date.now().toString().slice(-4)}.webm`,
-            type: 'recorded'
-          });
-          setFormData(prev => ({ ...prev, vocal_reference_type: 'recorded' }));
-        };
-        stream.getTracks().forEach(t => t.stop());
-      };
-
-      mediaRecorder.start(200);
+      await voiceMediaRecorderRef.current.start();
+      
       setIsRecordingVoice(true);
       setVoiceSeconds(0);
       voiceTimerRef.current = setInterval(() => {
-        setVoiceSeconds(s => s + 1);
+        setVoiceSeconds(s => {
+          if (s >= 239) {
+            stopRecordingVoice();
+            return 240;
+          }
+          return s + 1;
+        });
       }, 1000);
     } catch (err) {
       setError('Permite el acceso al micrófono en tu navegador para grabar tu referencia de voz.');
@@ -217,11 +206,28 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
 
   const stopRecordingVoice = () => {
     if (voiceMediaRecorderRef.current && isRecordingVoice) {
-      voiceMediaRecorderRef.current.stop();
+      voiceMediaRecorderRef.current.stop().getMp3().then(([buffer, blob]) => {
+        const url = URL.createObjectURL(blob);
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          setVoiceAudio({
+            url,
+            base64: reader.result,
+            name: `Voz_Grabada_${Date.now().toString().slice(-4)}.mp3`,
+            type: 'recorded'
+          });
+          setFormData(prev => ({ ...prev, vocal_reference_type: 'recorded' }));
+        };
+      }).catch((e) => {
+        console.error('Error al guardar MP3 de voz', e);
+      });
       setIsRecordingVoice(false);
       if (voiceTimerRef.current) clearInterval(voiceTimerRef.current);
     }
   };
+
+
 
   const handleUploadVoice = (e) => {
     const file = e.target.files?.[0];
@@ -280,6 +286,10 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
   // Submit Order & Trigger Mercado Pago
   const handleSubmitOrder = async (e) => {
     e.preventDefault();
+    if (!legalAccepted) {
+      setError('Debes aceptar los términos y condiciones para continuar.');
+      return;
+    }
     setError(null);
 
     if (!formData.customer_name || !formData.customer_email || !formData.customer_phone) {
@@ -534,7 +544,7 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
 
             <div>
               <label className="block text-sm font-semibold text-slate-200 mb-2">
-                Frases o nombres obligatorios que deben rimar en la letra:
+                Agrega arriba los nombres, apodos o frases que quieras que rimen (opcional):
               </label>
               <div className="flex gap-2 mb-3">
                 <input
@@ -1117,10 +1127,24 @@ export default function StoryComposer({ initialTier = 'SEMI_PRO', onOrderCreated
               </div>
             </div>
 
+            {/* Legal Checkbox */}
+            <div className="flex items-start gap-3 mt-4">
+              <input
+                type="checkbox"
+                id="legal-checkbox"
+                checked={legalAccepted}
+                onChange={(e) => setLegalAccepted(e.target.checked)}
+                className="mt-1 w-5 h-5 rounded border-gray-600 bg-gray-700 text-amber-500 focus:ring-amber-500 cursor-pointer"
+              />
+              <label htmlFor="legal-checkbox" className="text-sm text-slate-300 cursor-pointer select-none leading-relaxed">
+                Declaro que el contenido proporcionado es original o que tengo los derechos para usarlo. Me comprometo a respetar los derechos de autor (copyright) de canciones existentes. Además, eximo a Drop It Co. (Melofilia) de cualquier responsabilidad legal o de Copyright derivada de las referencias provistas. Acepto los <a href="#" className="text-amber-400 hover:underline">términos y condiciones</a>.
+              </label>
+            </div>
+
             <button
               type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-base shadow-xl shadow-amber-500/25 active:scale-98 transition-all disabled:opacity-50"
+              disabled={loading || !legalAccepted}
+              className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-base shadow-xl shadow-amber-500/25 active:scale-98 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>

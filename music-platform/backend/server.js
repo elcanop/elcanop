@@ -89,6 +89,44 @@ function requireRole(allowedRoles = ['OWNER']) {
   };
 }
 
+async function uploadAudioToStorage(base64Data, prefix) {
+  if (!base64Data || !base64Data.startsWith('data:audio/')) return null;
+  
+  try {
+    const matches = base64Data.match(/^data:audio\/([a-zA-Z0-9]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) return null;
+    
+    let ext = matches[1];
+    if (ext === 'webm') ext = 'webm';
+    else if (ext === 'mp4' || ext === 'x-m4a') ext = 'm4a';
+    else ext = 'mp3'; // default fallback
+
+    const buffer = Buffer.from(matches[2], 'base64');
+    const fileName = `${prefix}-${Date.now()}.${ext}`;
+
+    const { data, error } = await supabase.storage
+      .from('reference_audios')
+      .upload(fileName, buffer, {
+        contentType: `audio/${ext}`,
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Supabase upload error:', error);
+      return null;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('reference_audios')
+      .getPublicUrl(fileName);
+
+    return publicUrlData.publicUrl;
+  } catch (err) {
+    console.error('Error uploading audio:', err);
+    return null;
+  }
+}
+
 // ==========================================
 // ENDPOINTS
 // ==========================================
@@ -113,6 +151,11 @@ app.post('/api/admin/login', authLimiter, (req, res) => {
   const token = jwt.sign({ id: admin.id, role: admin.role, name: admin.name }, JWT_SECRET, { expiresIn: '8h' });
   logAuditEvent('ADMIN_LOGIN_SUCCESS', admin.name, 'Inicio de sesión exitoso', req);
   res.json({ success: true, token, user: { name: admin.name, role: admin.role } });
+});
+
+// ADMIN: VERIFY SESSION
+app.get('/api/admin/me', authenticateJWT, (req, res) => {
+  res.json({ valid: true, user: req.user });
 });
 
 // GET /api/marketing-styles
@@ -256,6 +299,9 @@ app.post('/api/orders', ordersLimiter, async (req, res) => {
       throw new Error(`Error Mercado Pago: ${JSON.stringify(mpResult)}`);
     }
 
+    const rhythm_url = await uploadAudioToStorage(orderData.rhythm_audio_data, `rhythm-${order_number}`);
+    const voice_url = await uploadAudioToStorage(orderData.voice_audio_data, `voice-${order_number}`);
+
     const newOrder = {
       order_number,
       customer_name: orderData.customer_name,
@@ -268,8 +314,8 @@ app.post('/api/orders', ordersLimiter, async (req, res) => {
       story_details: orderData.story_details || {},
       key_phrases: orderData.key_phrases || [],
       client_audio_notes: orderData.client_audio_notes || null,
-      rhythm_audio_data: orderData.rhythm_audio_data || null,
-      voice_audio_data: orderData.voice_audio_data || null,
+      rhythm_audio_data: rhythm_url || orderData.rhythm_audio_data, // fallback si no era base64
+      voice_audio_data: voice_url || orderData.voice_audio_data,
       total_amount,
       has_stems,
       payment_status: 'PENDING',
@@ -287,8 +333,8 @@ app.post('/api/orders', ordersLimiter, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      order_number,
-      init_point: mpResult.init_point
+      order: { order_number },
+      checkoutUrl: mpResult.init_point
     });
 
   } catch (error) {
@@ -297,6 +343,71 @@ app.post('/api/orders', ordersLimiter, async (req, res) => {
   }
 });
 
+// POST /api/orders/:orderNumber/verify-payment
+app.post('/api/orders/:orderNumber/verify-payment', async (req, res) => {
+  const { orderNumber } = req.params;
+  const { payment_id } = req.body;
+
+  try {
+    // 1. Fetch order
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select('*')
+      .ilike('order_number', orderNumber)
+      .single();
+
+    if (orderError || !order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+
+    // Si ya está pagado, no hacemos nada más que devolver el pedido
+    if (order.payment_status === 'COMPLETED') {
+      return res.json({ success: true, order });
+    }
+
+    // 2. Si no hay payment_id, no podemos verificar
+    if (!payment_id) {
+      return res.status(400).json({ error: 'Falta payment_id para verificar el pago.' });
+    }
+
+    // 3. Verificar el pago con Mercado Pago
+    const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${payment_id}`, {
+      headers: {
+        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`
+      }
+    });
+
+    if (!mpResponse.ok) {
+      return res.status(500).json({ error: 'Error al consultar Mercado Pago.' });
+    }
+
+    const mpData = await mpResponse.json();
+
+    // 4. Actualizar base de datos si el pago está aprobado
+    if (mpData.status === 'approved') {
+      const { data: updatedOrder, error: updateError } = await supabase
+        .from('orders')
+        .update({
+          payment_status: 'COMPLETED',
+          order_status: 'IN_PROGRESS',
+          payment_provider_reference: payment_id.toString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', order.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+      
+      logAuditEvent('PAYMENT_VERIFIED', 'SYSTEM', `Pago validado para pedido: ${orderNumber}`, req);
+      return res.json({ success: true, order: updatedOrder });
+    } else {
+      return res.json({ success: false, status: mpData.status, order });
+    }
+
+  } catch (err) {
+    console.error('Error verificando pago:', err);
+    res.status(500).json({ error: 'Error interno verificando el pago.' });
+  }
+});
 // GET /api/orders/:orderNumber
 app.get('/api/orders/:orderNumber', async (req, res) => {
   const { orderNumber } = req.params;
@@ -400,68 +511,86 @@ app.patch('/api/admin/orders/:id/deliver-versions', authenticateJWT, async (req,
   if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
 
   await supabase.from('orders').update({
-    version_a_url: versionA,
-    version_b_url: versionB,
+    version_a_url: versionA || null,
+    version_b_url: versionB || null,
     production_notes: notes,
-    order_status: 'DELIVERED',
+    order_status: 'DELIVERED_PENDING_REVIEW',
     delivered_at: new Date().toISOString()
   }).eq('id', order.id);
 
-  logAuditEvent('VERSIONS_DELIVERED', req.user.name, `Versiones A/B entregadas para pedido: ${order.order_number}`, req);
-  res.json({ success: true, message: 'Versiones entregadas exitosamente.' });
+  logAuditEvent('VERSIONS_DELIVERED', req.user.name, `Versiones entregadas (pendientes de revisión) para pedido: ${order.order_number}`, req);
+  res.json({ success: true, message: 'Versiones entregadas para revisión del cliente.' });
 });
 
-app.post('/api/orders/:orderNumber/correction', async (req, res) => {
+app.post('/api/orders/:orderNumber/review-delivery', async (req, res) => {
   const { orderNumber } = req.params;
-  const { correctionNotes } = req.body;
+  const { approved, selectedVersion, feedback } = req.body;
 
   const { data: order } = await supabase.from('orders').select('*').ilike('order_number', orderNumber).single();
   if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
 
-  if (order.corrections_used >= order.corrections_allowed) {
-    return res.status(400).json({ error: 'Ya has utilizado todas tus correcciones gratuitas.' });
+  if (approved) {
+    const expireDate = new Date();
+    expireDate.setDate(expireDate.getDate() + 30); // 30 días para descargar
+
+    // Determinar qué versión eligió si es que hay varias
+    let finalMp3Url = order.version_a_url;
+    if (selectedVersion === 'B' && order.version_b_url) finalMp3Url = order.version_b_url;
+
+    const downloadLinks = {
+      mp3: finalMp3Url,
+      wav: `https://mock.url/download/${orderNumber}_${selectedVersion || 'A'}_Master.wav`,
+      stems: order.has_stems ? `https://mock.url/download/${orderNumber}_Stems.zip` : null
+    };
+
+    await supabase.from('orders').update({
+      order_status: 'COMPLETED',
+      delivery_assets: downloadLinks,
+      download_expires_at: expireDate.toISOString()
+    }).eq('id', order.id);
+
+    logAuditEvent('DELIVERY_APPROVED', 'CUSTOMER', `Cliente aprobó entrega y seleccionó versión ${selectedVersion || 'A'}.`, req);
+    return res.json({ success: true, downloadLinks, expires_at: expireDate.toISOString() });
+  } else {
+    // Rechazo / Petición de Corrección
+    if (order.corrections_used >= order.corrections_allowed) {
+      return res.status(400).json({ error: 'Ya has utilizado todas tus correcciones gratuitas.' });
+    }
+
+    await supabase.from('orders').update({
+      order_status: 'CORRECTION_REQUESTED',
+      corrections_used: order.corrections_used + 1,
+      musical_feedback: feedback
+    }).eq('id', order.id);
+
+    logAuditEvent('CORRECTION_REQUESTED', 'CUSTOMER', `Corrección musical solicitada para: ${orderNumber}`, req);
+    return res.json({ success: true, message: 'Corrección solicitada. Nuestro equipo trabajará en ella.' });
+  }
+});
+
+app.delete('/api/admin/orders/:id/audio', authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  const { type } = req.query; // 'rhythm' o 'voice'
+
+  const { data: order } = await supabase.from('orders').select('*').or(`id.eq.${id},order_number.eq.${id}`).single();
+  if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+
+  const urlField = type === 'rhythm' ? 'rhythm_audio_data' : 'voice_audio_data';
+  const fileUrl = order[urlField];
+  
+  if (fileUrl && fileUrl.includes('reference_audios/')) {
+    const fileName = fileUrl.split('reference_audios/')[1];
+    await supabase.storage.from('reference_audios').remove([fileName]);
   }
 
-  await supabase.from('orders').update({
-    order_status: 'IN_CORRECTION',
-    corrections_used: order.corrections_used + 1,
-    production_notes: `[CORRECCIÓN SOLICITADA]: ${correctionNotes}`
-  }).eq('id', order.id);
-
-  logAuditEvent('CORRECTION_REQUESTED', 'CUSTOMER', `Corrección solicitada para: ${orderNumber}`, req);
-  res.json({ success: true, message: 'Corrección solicitada. Nuestro equipo trabajará en ella.' });
-});
-
-app.post('/api/orders/:orderNumber/download-grant', async (req, res) => {
-  const { orderNumber } = req.params;
-  const { selectedVersion } = req.body; // 'A' o 'B'
-
-  const { data: order } = await supabase.from('orders').select('*').ilike('order_number', orderNumber).single();
-  if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
-
-  const expireDate = new Date();
-  expireDate.setDate(expireDate.getDate() + 30); // 30 días para descargar
-
-  const downloadLinks = {
-    mp3: selectedVersion === 'A' ? order.version_a_url : order.version_b_url,
-    wav: `https://mock.url/download/${orderNumber}_${selectedVersion}_Master.wav`,
-    stems: order.has_stems ? `https://mock.url/download/${orderNumber}_Stems.zip` : null
-  };
-
-  await supabase.from('orders').update({
-    order_status: 'COMPLETED',
-    delivery_assets: downloadLinks,
-    download_expires_at: expireDate.toISOString()
-  }).eq('id', order.id);
-
-  logAuditEvent('DOWNLOAD_GRANTED', 'CUSTOMER', `Cliente seleccionó versión ${selectedVersion} para descargar.`, req);
-  res.json({ success: true, downloadLinks, expires_at: expireDate.toISOString() });
+  await supabase.from('orders').update({ [urlField]: null }).eq('id', order.id);
+  
+  logAuditEvent('AUDIO_DELETED', req.user.name, `Audio ${type} eliminado del pedido ${order.order_number}`, req);
+  res.json({ success: true, message: 'Audio eliminado exitosamente para liberar espacio.' });
 });
 
 module.exports = app;
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Melofilia Secure Backend API running on port ${PORT}`);
-});
 
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => { console.log(`Running on port ${PORT}`); });

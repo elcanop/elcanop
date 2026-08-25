@@ -4,13 +4,13 @@ import {
   Play, Square, ChevronRight, Eye, CheckCircle2, Sliders, 
   Send, FileText, UserCheck, Sparkles, CreditCard, Loader2, Tag, 
   Percent, DollarSign, Save, Mail, MessageSquare, ThumbsUp, Link, Filter,
-  LogOut, ShieldAlert, Activity, User, Edit3, Volume2, Plus, Disc, Mic
+  LogOut, ShieldAlert, Activity, User, Edit3, Volume2, Plus, Disc, Mic, Trash2
 } from 'lucide-react';
 import { 
   getAdminOrders, updateAdminOrderStatus, simulatePaymentApproval, 
   getPricingConfig, updatePricingConfig, getAdminContactMessages, 
   updateAdminContactMessage, getAuditLogs, getMarketingSongs, updateMarketingSongs,
-  proposeLyrics, deliverTwoVersions
+  proposeLyrics, deliverTwoVersions, deleteAdminOrderAudio
 } from '../utils/api';
 
 export default function AdminDashboard({ currentUser, onLogout, onSelectOrderToView, onPricingUpdated, globalPricing }) {
@@ -175,6 +175,23 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
     try {
       await updateAdminOrderStatus(selectedOrder.id, { status: 'DELIVERED' });
       setActionMessage(`Pedido ${selectedOrder.order_number} marcado como ENTREGADO con bóveda de 7 días activa.`);
+      await fetchAllAdminData();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleArchiveAudio = async (type) => {
+    if (!selectedOrder) return;
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar la referencia de ${type === 'rhythm' ? 'ritmo' : 'voz'}? Esta acción no se puede deshacer.`)) return;
+    
+    setActionLoading(true);
+    setActionMessage(null);
+    try {
+      const res = await deleteAdminOrderAudio(selectedOrder.id, type);
+      setActionMessage(res.message || 'Audio eliminado exitosamente.');
       await fetchAllAdminData();
     } catch (err) {
       setError(err.message);
@@ -529,19 +546,70 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {selectedOrder.rhythm_audio_data && (
-                        <div className="p-3 rounded-xl bg-[#12141e] border border-[#262a40] space-y-1.5">
-                          <span className="text-[11px] font-bold text-slate-300 block">🎵 Referencia Rítmica:</span>
+                        <div className="p-3 rounded-xl bg-[#12141e] border border-[#262a40] space-y-1.5 flex flex-col">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[11px] font-bold text-slate-300">🎵 Referencia Rítmica:</span>
+                            <button
+                              onClick={() => handleArchiveAudio('rhythm')}
+                              disabled={actionLoading}
+                              className="text-slate-400 hover:text-rose-400 transition-colors"
+                              title="Archivar / Eliminar Audio para liberar espacio"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                           <audio controls src={selectedOrder.rhythm_audio_data} className="w-full h-8" />
+                          <a 
+                            href={selectedOrder.rhythm_audio_data} 
+                            download={`ritmo-${selectedOrder.order_number}`}
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="text-[10px] text-amber-400 hover:underline mt-1 self-start"
+                          >
+                            📥 Descargar (Click derecho {'>'} Guardar como)
+                          </a>
                         </div>
                       )}
 
                       {selectedOrder.voice_audio_data && (
-                        <div className="p-3 rounded-xl bg-[#12141e] border border-[#262a40] space-y-1.5">
-                          <span className="text-[11px] font-bold text-slate-300 block">🎤 Referencia Vocal:</span>
+                        <div className="p-3 rounded-xl bg-[#12141e] border border-[#262a40] space-y-1.5 flex flex-col">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[11px] font-bold text-slate-300">🎤 Referencia Vocal:</span>
+                            <button
+                              onClick={() => handleArchiveAudio('voice')}
+                              disabled={actionLoading}
+                              className="text-slate-400 hover:text-rose-400 transition-colors"
+                              title="Archivar / Eliminar Audio para liberar espacio"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                           <audio controls src={selectedOrder.voice_audio_data} className="w-full h-8" />
+                          <a 
+                            href={selectedOrder.voice_audio_data} 
+                            download={`voz-${selectedOrder.order_number}`}
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="text-[10px] text-amber-400 hover:underline mt-1 self-start"
+                          >
+                            📥 Descargar (Click derecho {'>'} Guardar como)
+                          </a>
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* Musical Feedback (if correction requested) */}
+                {selectedOrder.musical_feedback && (
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-bold">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Feedback de Corrección Musical:</span>
+                    </div>
+                    <p className="text-xs bg-[#12141e] p-3 rounded-xl border border-amber-500/20">
+                      "{selectedOrder.musical_feedback}"
+                    </p>
                   </div>
                 )}
 
