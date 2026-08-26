@@ -10,7 +10,7 @@ import {
   getAdminOrders, updateAdminOrderStatus, simulatePaymentApproval, 
   getPricingConfig, updatePricingConfig, getAdminContactMessages, 
   updateAdminContactMessage, getAuditLogs, getMarketingSongs, updateMarketingSongs,
-  proposeLyrics, deliverTwoVersions, deleteAdminOrderAudio
+  proposeLyrics, deliverTwoVersions, deleteAdminOrderAudio, getSignedUploadUrl, uploadFileToSignedUrl
 } from '../utils/api';
 
 export default function AdminDashboard({ currentUser, onLogout, onSelectOrderToView, onPricingUpdated, globalPricing }) {
@@ -242,6 +242,23 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
     } catch(e) {
       console.error("Error al descargar:", e);
       alert("Hubo un error al intentar descargar el archivo.");
+    }
+  };
+
+  const handleFileUpload = async (e, folder, onComplete) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      setActionLoading(true);
+      // getSignedUploadUrl is imported from api.js
+      const { signedUrl, token, publicUrl } = await getSignedUploadUrl(file.name, folder, getAdminToken());
+      await uploadFileToSignedUrl(signedUrl, token, file);
+      onComplete(publicUrl);
+    } catch (err) {
+      alert("Error subiendo archivo: " + err.message);
+    } finally {
+      setActionLoading(false);
+      e.target.value = '';
     }
   };
 
@@ -627,7 +644,18 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
                   </div>
 
                   <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">Audio URL - Versión A:</label>
+                    <label className="block text-[11px] text-slate-400 mb-1 flex justify-between items-center">
+                      <span>Audio URL - Versión A:</span>
+                      <label className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded cursor-pointer hover:bg-amber-500/30">
+                        Subir MP3
+                        <input 
+                          type="file" 
+                          accept="audio/*" 
+                          className="hidden" 
+                          onChange={(e) => handleFileUpload(e, 'deliveries', setVersionAUrl)} 
+                        />
+                      </label>
+                    </label>
                     <input
                       type="text"
                       value={versionAUrl}
@@ -638,7 +666,18 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
                   </div>
 
                   <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">Audio URL - Versión B:</label>
+                    <label className="block text-[11px] text-slate-400 mb-1 flex justify-between items-center">
+                      <span>Audio URL - Versión B:</span>
+                      <label className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded cursor-pointer hover:bg-amber-500/30">
+                        Subir MP3
+                        <input 
+                          type="file" 
+                          accept="audio/*" 
+                          className="hidden" 
+                          onChange={(e) => handleFileUpload(e, 'deliveries', setVersionBUrl)} 
+                        />
+                      </label>
+                    </label>
                     <input
                       type="text"
                       value={versionBUrl}
@@ -807,7 +846,22 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
                   </div>
 
                   <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">Audio URL (MP3/WAV):</label>
+                    <label className="block text-[11px] text-slate-400 mb-1 flex justify-between items-center">
+                      <span>Audio URL (MP3/WAV):</span>
+                      <label className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded cursor-pointer hover:bg-amber-500/30">
+                        Subir MP3
+                        <input 
+                          type="file" 
+                          accept="audio/*" 
+                          className="hidden" 
+                          onChange={(e) => handleFileUpload(e, 'marketing', (url) => {
+                            const copy = [...marketingStyles];
+                            copy[idx].audio_url = url;
+                            setMarketingStyles(copy);
+                          })} 
+                        />
+                      </label>
+                    </label>
                     <input
                       type="text"
                       value={style.audio_url}

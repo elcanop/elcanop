@@ -306,6 +306,38 @@ export async function simulatePaymentApproval(orderNumber) {
   return res.json();
 }
 
+export const getSignedUploadUrl = async (fileName, folder, token) => {
+  const res = await fetch(`${API_BASE}/api/admin/get-upload-url`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ fileName, folder })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al obtener URL de subida');
+  }
+  return res.json();
+};
+
+export const uploadFileToSignedUrl = async (signedUrl, token, file) => {
+  const res = await fetch(signedUrl, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: file
+  });
+  
+  if (!res.ok) {
+    throw new Error('Error al subir el archivo a Supabase');
+  }
+  
+  return true;
+};
+
 export async function deleteAdminOrderAudio(orderId, type) {
   const token = getAdminToken();
   const res = await fetch(`${API_BASE}/api/admin/orders/${orderId}/audio?type=${type}`, {
