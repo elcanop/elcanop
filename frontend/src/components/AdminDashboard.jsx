@@ -231,6 +231,20 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
     }
   };
 
+  const handleDownloadBase64 = (base64Data, filename) => {
+    try {
+      const link = document.createElement('a');
+      link.href = base64Data;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch(e) {
+      console.error("Error al descargar:", e);
+      alert("Hubo un error al intentar descargar el archivo.");
+    }
+  };
+
   const filteredOrders = filterStatus === 'ALL'
     ? orders
     : orders.filter(o => o.order_status === filterStatus);
@@ -557,15 +571,12 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
                             </button>
                           </div>
                           <audio controls src={selectedOrder.rhythm_audio_data} className="w-full h-8" />
-                          <a 
-                            href={selectedOrder.rhythm_audio_data} 
-                            download={`ritmo-${selectedOrder.order_number}`}
-                            target="_blank" 
-                            rel="noreferrer"
+                          <button 
+                            onClick={() => handleDownloadBase64(selectedOrder.rhythm_audio_data, `ritmo-${selectedOrder.order_number}.mp3`)}
                             className="text-[10px] text-amber-400 hover:underline mt-1 self-start"
                           >
-                            📥 Descargar (Click derecho {'>'} Guardar como)
-                          </a>
+                            📥 Descargar MP3
+                          </button>
                         </div>
                       )}
 
@@ -583,15 +594,12 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
                             </button>
                           </div>
                           <audio controls src={selectedOrder.voice_audio_data} className="w-full h-8" />
-                          <a 
-                            href={selectedOrder.voice_audio_data} 
-                            download={`voz-${selectedOrder.order_number}`}
-                            target="_blank" 
-                            rel="noreferrer"
+                          <button 
+                            onClick={() => handleDownloadBase64(selectedOrder.voice_audio_data, `voz-${selectedOrder.order_number}.mp3`)}
                             className="text-[10px] text-amber-400 hover:underline mt-1 self-start"
                           >
-                            📥 Descargar (Click derecho {'>'} Guardar como)
-                          </a>
+                            📥 Descargar MP3
+                          </button>
                         </div>
                       )}
                     </div>
