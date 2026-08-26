@@ -345,8 +345,21 @@ export async function deleteAdminOrderAudio(orderId, type) {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Error al eliminar el audio');
+    const err = await res.json();
+    throw new Error(err.error || 'Error al eliminar audio');
+  }
+  return res.json();
+}
+
+export async function deleteAdminOrderDeliveries(orderId) {
+  const token = getAdminToken();
+  const res = await fetch(`${API_BASE}/api/admin/orders/${orderId}/deliveries`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Error al eliminar entregas de la nube');
   }
   return res.json();
 }

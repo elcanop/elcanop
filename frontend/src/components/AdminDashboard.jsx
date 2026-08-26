@@ -10,7 +10,7 @@ import {
   getAdminOrders, updateAdminOrderStatus, simulatePaymentApproval, 
   getPricingConfig, updatePricingConfig, getAdminContactMessages, 
   updateAdminContactMessage, getAuditLogs, getMarketingSongs, updateMarketingSongs,
-  proposeLyrics, deliverTwoVersions, deleteAdminOrderAudio, getSignedUploadUrl, uploadFileToSignedUrl
+  proposeLyrics, deliverTwoVersions, deleteAdminOrderAudio, getSignedUploadUrl, uploadFileToSignedUrl, deleteAdminOrderDeliveries
 } from '../utils/api';
 
 export default function AdminDashboard({ currentUser, onLogout, onSelectOrderToView, onPricingUpdated, globalPricing }) {
@@ -192,6 +192,23 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
     try {
       const res = await deleteAdminOrderAudio(selectedOrder.id, type);
       setActionMessage(res.message || 'Audio eliminado exitosamente.');
+      await fetchAllAdminData();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteDeliveries = async () => {
+    if (!selectedOrder) return;
+    if (!window.confirm(`¿Estás seguro de eliminar las entregas en la nube para este pedido? Esto borrará Versión A, Versión B y Stems.`)) return;
+    
+    setActionLoading(true);
+    setActionMessage(null);
+    try {
+      const res = await deleteAdminOrderDeliveries(selectedOrder.id);
+      setActionMessage(res.message || 'Entregas eliminadas exitosamente.');
       await fetchAllAdminData();
     } catch (err) {
       setError(err.message);
@@ -635,6 +652,36 @@ FEEDBACK DE LETRA: ${order.lyrics_feedback || 'Ninguno'}
                     </p>
                   </div>
                 )}
+
+                {/* 7 Day Delivery Age Warning */}
+                {(() => {
+                  const hasDeliveries = selectedOrder.version_a_url || selectedOrder.version_b_url || selectedOrder.stems_url;
+                  const deliveryDate = new Date(selectedOrder.updated_at);
+                  const daysSince = Math.floor((new Date() - deliveryDate) / (1000 * 60 * 60 * 24));
+                  
+                  if (hasDeliveries && daysSince >= 7) {
+                    return (
+                      <div className="p-4 mb-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 space-y-3">
+                        <div className="flex items-center gap-2 text-xs font-bold">
+                          <AlertCircle className="w-4 h-4" />
+                          <span>⚠️ Alerta: Entregas Antiguas ({daysSince} días)</span>
+                        </div>
+                        <p className="text-[11px]">
+                          Los archivos de entrega de este pedido llevan más de 7 días en la nube. Te recomendamos eliminarlos para liberar espacio.
+                        </p>
+                        <button
+                          onClick={handleDeleteDeliveries}
+                          disabled={actionLoading}
+                          className="w-full py-2 px-4 rounded-xl bg-red-500/20 hover:bg-red-500/40 text-red-300 font-bold text-xs flex items-center justify-center gap-2 transition-colors border border-red-500/50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Eliminar Archivos de la Nube</span>
+                        </button>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 {/* 2 Versions Audio URLs Input */}
                 <div className="p-4 rounded-2xl bg-[#090a0f] border border-[#262a40] space-y-3">
